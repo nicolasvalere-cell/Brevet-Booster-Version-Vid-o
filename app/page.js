@@ -66,10 +66,17 @@ function Toast({ message }) { return <div className="toast">{IC.check} {message}
 
 function getVideoEmbed(url) {
   if (!url) return null
+  // YouTube
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/)
   if (ytMatch) return { type: 'youtube', id: ytMatch[1] }
+  // Loom
   if (url.includes('loom.com')) { const m = url.match(/loom\.com\/(?:share|embed)\/([a-f0-9]+)/); if (m) return { type: 'loom', id: m[1] } }
-  return { type: 'mp4', url }
+  // Bunny Stream (iframe.mediadelivery.net or player.mediadelivery.net)
+  if (url.includes('mediadelivery.net')) return { type: 'bunny', url: url.replace('/play/', '/embed/') }
+  // Direct video files
+  if (url.match(/\.(mp4|webm|mov)(\?|$)/i)) return { type: 'mp4', url }
+  // Fallback: treat as iframe embed
+  return { type: 'iframe', url }
 }
 
 // ═══ LOGIN ═══
@@ -164,9 +171,15 @@ function WelcomePage({ settings, completedChapters, totalChapters, completedVide
 
 // ═══ COURSE VIEW (shared between Formation + Prépa Brevet) ═══
 function CourseView({ sections, completedVideos, completedChapters, toggleVideoComplete, toggleChapterComplete, trackPdf, earnXP, userId, title, subtitle }) {
-  const [openChapter, setOpenChapter] = useState(null)
+  const [openChapters, setOpenChapters] = useState(new Set())
   const [viewingVideo, setViewingVideo] = useState(null)
   const [viewingPdf, setViewingPdf] = useState(null)
+
+  const toggleChapter = (id) => setOpenChapters(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
 
   const openPdf = (url, t, type) => { trackPdf(type, t); setViewingPdf({ url, title: t, type }) }
 
@@ -203,6 +216,7 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
         {/* Player */}
         {embed?.type === 'youtube' ? <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16, position: 'relative', paddingBottom: '56.25%', background: '#000' }}><iframe src={`https://www.youtube.com/embed/${embed.id}?rel=0&modestbranding=1`} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} allowFullScreen /></div>
         : embed?.type === 'loom' ? <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16, position: 'relative', paddingBottom: '56.25%', background: '#000' }}><iframe src={`https://www.loom.com/embed/${embed.id}`} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} allowFullScreen /></div>
+        : embed?.type === 'bunny' || embed?.type === 'iframe' ? <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16, position: 'relative', paddingBottom: '56.25%', background: '#000' }}><iframe src={embed.url} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture" allowFullScreen /></div>
         : embed?.type === 'mp4' ? <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16, background: '#000' }}><video controls style={{ width: '100%', display: 'block' }} src={embed.url} /></div>
         : <div style={{ borderRadius: 14, background: 'var(--bg)', border: '1px solid var(--border)', padding: 60, textAlign: 'center', marginBottom: 16 }}><div style={{ fontSize: 40, marginBottom: 8 }}>🎥</div><p style={{ color: 'var(--text-sec)' }}>Vidéo bientôt disponible</p></div>}
         {/* Nav buttons */}
@@ -240,26 +254,29 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
       {sections.map(section => (
         <div key={section.id} style={{ marginBottom: 28 }}>
           {/* SECTION TITLE - big and prominent */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '14px 0' }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{section.emoji}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, padding: '18px 22px', background: 'linear-gradient(135deg, var(--accent-bg), #E0E7FF)', borderRadius: 14, border: '1px solid var(--accent-light)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, color: 'white', boxShadow: '0 4px 12px rgba(79,70,229,0.25)' }}>{section.emoji}</div>
             <div>
               <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{section.title}</div>
               <div style={{ fontSize: 13, color: 'var(--text-sec)', marginTop: 2 }}>{(section.chapters || []).length} chapitre{(section.chapters || []).length > 1 ? 's' : ''}</div>
             </div>
           </div>
           {(section.chapters || []).map((ch, ci) => {
-            const vids = ch.videos || []; const isOpen = openChapter === ch.id
+            const vids = ch.videos || []; const isOpen = openChapters.has(ch.id)
             const doneVids = vids.filter(v => completedVideos.includes(v.id)).length
             const chDone = completedChapters.includes(ch.id)
             return (
-              <div key={ch.id} className="card" style={{ marginBottom: 8, borderColor: isOpen ? 'var(--accent-light)' : undefined }}>
-                {/* CHAPTER TITLE - medium, clear */}
-                <div onClick={() => setOpenChapter(isOpen ? null : ch.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div key={ch.id} style={{ marginBottom: 10, background: 'var(--card)', border: isOpen ? '1.5px solid var(--accent-light)' : '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', transition: 'all 0.2s' }}>
+                {/* CHAPTER TITLE */}
+                <div onClick={() => toggleChapter(ch.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
                     <div className={`checkbox ${chDone ? 'checked' : ''}`} onClick={e => { e.stopPropagation(); toggleChapterComplete(ch.id) }}>{chDone && IC.check}</div>
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: chDone ? 'var(--text-sec)' : 'var(--text)', textDecoration: chDone ? 'line-through' : 'none' }}>{ch.title}</div>
-                      {vids.length > 0 && <div style={{ fontSize: 12, color: doneVids === vids.length && vids.length > 0 ? 'var(--success)' : 'var(--text-sec)', marginTop: 2 }}>{doneVids}/{vids.length} vidéo{vids.length > 1 ? 's' : ''}</div>}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: chDone ? 'var(--text-sec)' : 'var(--text)', textDecoration: chDone ? 'line-through' : 'none', lineHeight: 1.3 }}>{ch.title}</div>
+                      {vids.length > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                        <div style={{ width: 60 }}><ProgressBar value={doneVids} max={vids.length} height={4} /></div>
+                        <span style={{ fontSize: 12, color: doneVids === vids.length && vids.length > 0 ? 'var(--success)' : 'var(--text-sec)', fontWeight: 600 }}>{doneVids}/{vids.length} vidéo{vids.length > 1 ? 's' : ''}</span>
+                      </div>}
                     </div>
                   </div>
                   <div style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-sec)' }}>{IC.chev}</div>
@@ -678,7 +695,7 @@ export default function Home() {
   if (!user) return <LoginPage onLogin={login} />
   const isAdmin = user.role === 'admin'
   const studentNav = [{ id: 'welcome', label: 'Accueil', icon: IC.home }, { id: 'chapters', label: 'Formation', icon: IC.book }, { id: 'games', label: 'Entraînement', icon: IC.game }]
-  const adminNav = [{ id: 'admin-dash', label: 'Dashboard', icon: IC.dash }, { id: 'admin-students', label: 'Élèves', icon: IC.users }, { id: 'admin-formation', label: 'Formation', icon: IC.book }, { id: 'admin-prep', label: 'Prépa Brevet', icon: IC.target }, { id: 'admin-progress', label: 'Progression', icon: IC.chart }, { id: 'admin-assignments', label: 'Devoirs', icon: IC.edit }]
+  const adminNav = [{ id: 'admin-dash', label: 'Dashboard', icon: IC.dash }, { id: 'admin-students', label: 'Élèves', icon: IC.users }, { id: 'admin-formation', label: 'Contenu', icon: IC.book }, { id: 'admin-progress', label: 'Progression', icon: IC.chart }]
 
   return (
     <div className="app-layout">
@@ -690,9 +707,7 @@ export default function Home() {
         {isAdmin && page === 'admin-dash' && <AdminDash students={students} sections={allSections} videos={videos} />}
         {isAdmin && page === 'admin-students' && <AdminStudents students={students} reload={loadData} showToast={showToast} />}
         {isAdmin && page === 'admin-formation' && <AdminContent sections={allSections} reload={loadData} showToast={showToast} contentType="formation" />}
-        {isAdmin && page === 'admin-prep' && <AdminContent sections={allSections} reload={loadData} showToast={showToast} contentType="prep" />}
         {isAdmin && page === 'admin-progress' && <AdminProgress students={students} sections={allSections} />}
-        {isAdmin && page === 'admin-assignments' && <AdminAssignments students={students} />}
       </div>
       {toast && <Toast message={toast} />}
       {xpPopup && <div style={{ position: 'fixed', top: 80, right: 24, background: 'linear-gradient(135deg, #312E81, #1E1B4B)', color: '#A5B4FC', padding: '12px 20px', borderRadius: 14, fontSize: 14, fontWeight: 800, zIndex: 300, display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.3)', animation: 'toastIn 0.3s ease' }}>⚡ +{xpPopup.xp} XP — {xpPopup.label}</div>}
