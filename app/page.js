@@ -227,12 +227,16 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
         </div>
         {/* Playlist */}
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-sec)', marginBottom: 8 }}>Vidéos du chapitre</div>
-        <div className="card" style={{ marginBottom: 16 }}>{allVids.map(v => {
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>{allVids.map((v, vi) => {
           const active = v.id === viewingVideo.id; const done = completedVideos.includes(v.id)
-          return <div key={v.id} onClick={() => setViewingVideo(v)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', cursor: 'pointer', background: active ? 'var(--accent-bg)' : 'transparent', borderLeft: active ? '3px solid var(--accent)' : '3px solid transparent', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ width: 20, height: 20, borderRadius: '50%', background: done ? 'var(--success)' : 'transparent', border: done ? 'none' : '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}</div>
-            <span style={{ flex: 1, fontSize: 13, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : done ? 'var(--text-sec)' : 'var(--text)' }}>{v.title}</span>
-            {v.duration_minutes > 0 && <span style={{ fontSize: 11, color: 'var(--text-sec)' }}>{v.duration_minutes}m</span>}
+          return <div key={v.id} onClick={() => setViewingVideo(v)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', cursor: 'pointer', borderRadius: 10, background: active ? 'var(--accent-bg)' : done ? 'var(--success-bg)' : 'var(--bg)', border: active ? '1.5px solid var(--accent-light)' : '1px solid transparent', transition: 'all 0.15s' }}>
+            {done && !active ? (
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+            ) : (
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: active ? 'var(--accent)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: active ? 'white' : 'var(--text-sec)', fontSize: 12, fontWeight: 800, fontFamily: 'monospace' }}>{active ? '▶' : vi + 1}</div>
+            )}
+            <span style={{ flex: 1, fontSize: 14, fontWeight: active ? 700 : 500, color: active ? 'var(--accent)' : done ? 'var(--success)' : 'var(--text)' }}>{v.title}</span>
+            {v.duration_minutes > 0 && <div style={{ padding: '3px 10px', borderRadius: 20, background: active ? 'rgba(79,70,229,0.15)' : 'var(--border)', fontSize: 11, fontWeight: 600, color: active ? 'var(--accent)' : 'var(--text-sec)' }}>{v.duration_minutes} min</div>}
           </div>
         })}</div>
         {/* PDFs */}
@@ -283,20 +287,32 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
                 </div>
                 {isOpen && (
                   <div style={{ borderTop: '1px solid var(--border)' }}>
-                    {/* VIDEO LIST - small, compact */}
-                    {vids.length > 0 ? vids.map(v => {
-                      const done = completedVideos.includes(v.id)
-                      return <div key={v.id} onClick={() => setViewingVideo(v)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px 10px 56px', cursor: 'pointer', borderBottom: '1px solid var(--border)', transition: 'background 0.1s' }} onMouseOver={e => e.currentTarget.style.background='var(--bg)'} onMouseOut={e => e.currentTarget.style.background='transparent'}>
-                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: done ? 'var(--success)' : 'transparent', border: done ? 'none' : '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{done && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}</div>
-                        <span style={{ color: 'var(--accent)', flexShrink: 0 }}>{IC.play}</span>
-                        <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: done ? 'var(--text-sec)' : 'var(--text)' }}>{v.title}</span>
-                        {v.duration_minutes > 0 && <span style={{ fontSize: 11, color: 'var(--text-sec)' }}>{v.duration_minutes}m</span>}
-                      </div>
-                    }) : <div style={{ padding: '16px 56px', fontSize: 13, color: 'var(--text-sec)' }}>Aucune vidéo</div>}
+                    {/* VIDEO LIST */}
+                    <div style={{ padding: '12px 16px 8px' }}>
+                      {vids.length > 0 ? vids.map((v, vi) => {
+                        const done = completedVideos.includes(v.id)
+                        return <div key={v.id} onClick={() => setViewingVideo(v)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 6, cursor: 'pointer', borderRadius: 10, background: done ? 'var(--success-bg)' : 'var(--bg)', border: '1px solid transparent', transition: 'all 0.15s' }} onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent-light)'; e.currentTarget.style.transform = 'translateX(4px)' }} onMouseOut={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.transform = 'none' }}>
+                          {/* Number or check */}
+                          {done ? (
+                            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+                          ) : (
+                            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--accent)', fontSize: 12, fontWeight: 800, fontFamily: 'monospace' }}>{vi + 1}</div>
+                          )}
+                          {/* Play icon */}
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: done ? 'rgba(5,150,105,0.1)' : 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: done ? 'var(--success)' : 'var(--accent)' }}>{IC.play}</div>
+                          {/* Title */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: done ? 'var(--success)' : 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.title}</div>
+                          </div>
+                          {/* Duration badge */}
+                          {v.duration_minutes > 0 && <div style={{ padding: '3px 10px', borderRadius: 20, background: done ? 'rgba(5,150,105,0.15)' : 'var(--border)', fontSize: 11, fontWeight: 600, color: done ? 'var(--success)' : 'var(--text-sec)', flexShrink: 0 }}>{v.duration_minutes} min</div>}
+                        </div>
+                      }) : <div style={{ padding: '20px 14px', fontSize: 14, color: 'var(--text-sec)', textAlign: 'center' }}>Aucune vidéo pour le moment</div>}
+                    </div>
                     {/* PDF buttons */}
-                    <div style={{ padding: '10px 18px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                      {[['📘 Cours', ch.pdf_url, 'cours', 'var(--accent-bg)', 'var(--accent)'], ['✏️ Exercices', ch.exercises_pdf_url, 'exercices', 'var(--danger-bg)', 'var(--danger)'], ['📝 Auto-éval', ch.eval_pdf_url, 'auto-eval', '#FEF3C7', '#92400E']].map(([label, url, type, bg, color]) => (
-                        <button key={type} onClick={() => url && openPdf(url, ch.title, type)} disabled={!url} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '8px 6px', borderRadius: 8, border: '1px solid var(--border)', background: url ? bg : 'var(--bg)', color: url ? color : 'var(--text-sec)', fontSize: 12, fontWeight: 600, cursor: url ? 'pointer' : 'default', fontFamily: 'inherit', opacity: url ? 1 : 0.4 }}>{label}</button>
+                    <div style={{ padding: '8px 16px 14px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                      {[['📘', 'Cours', ch.pdf_url, 'cours', '#EEF2FF', '#4F46E5', '#C7D2FE'], ['✏️', 'Exercices', ch.exercises_pdf_url, 'exercices', '#FEF2F2', '#DC2626', '#FECACA'], ['📝', 'Auto-éval', ch.eval_pdf_url, 'auto-eval', '#FFFBEB', '#92400E', '#FDE68A']].map(([icon, label, url, type, bg, color, border]) => (
+                        <button key={type} onClick={() => url && openPdf(url, ch.title, type)} disabled={!url} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 8px', borderRadius: 10, border: `1.5px solid ${url ? border : 'var(--border)'}`, background: url ? bg : 'var(--bg)', color: url ? color : 'var(--text-sec)', fontSize: 13, fontWeight: 700, cursor: url ? 'pointer' : 'default', fontFamily: 'inherit', opacity: url ? 1 : 0.35, transition: 'all 0.15s' }}>{icon} {label}</button>
                       ))}
                     </div>
                   </div>
