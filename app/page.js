@@ -112,7 +112,7 @@ function Sidebar({ items, current, setCurrent, onLogout, role, mobileOpen, setMo
 }
 
 // ═══ WELCOME (improved) ═══
-function WelcomePage({ settings, completedChapters, totalChapters, completedVideos, totalVideos, streak, xp, sections, onNavigate, onContinue }) {
+function WelcomePage({ settings, completedChapters, totalChapters, completedVideos, totalVideos, streak, xp, sections, onNavigate, onContinue, weeklyVideos, lastVideo, allVideos, allSections, userName, onShowCert }) {
   const pct = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0
   const vidPct = totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0
   const badge = getBadge(completedChapters)
@@ -120,71 +120,47 @@ function WelcomePage({ settings, completedChapters, totalChapters, completedVide
   const level = getLevel(xp); const nextLevel = getNextLevel(xp)
   const xpIn = nextLevel ? xp - level.min : 0; const xpFor = nextLevel ? nextLevel.min - level.min : 1
   const diff = BREVET_DATE - new Date(); const daysLeft = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)))
+  const weeklyGoal = 5; const weeklyPct = Math.min(100, Math.round((weeklyVideos / weeklyGoal) * 100))
+  const lastVidInfo = useMemo(() => {
+    if (!lastVideo) return null; const vid = allVideos.find(v => v.id === lastVideo); if (!vid) return null
+    const ch = allSections.flatMap(s => s.chapters || []).find(c => (c.videos || []).some(v => v.id === vid.id))
+    return { ...vid, chapterTitle: ch?.title || '' }
+  }, [lastVideo, allVideos, allSections])
   return (
     <div>
-      {/* Big continue button */}
-      <div className="welcome-continue" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', borderRadius: 16, padding: '28px 24px', marginBottom: 20, color: 'white', cursor: 'pointer' }} onClick={onContinue}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginBottom: 6 }}>REPRENDRE LA FORMATION</div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Continue là où tu t&apos;es arrêté →</h2>
-        </div>
-        <div className="progress-section">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ flex: 1 }}><div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 20, height: 8, overflow: 'hidden' }}><div style={{ width: `${vidPct}%`, height: '100%', background: 'white', borderRadius: 20 }} /></div></div>
-            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'monospace' }}>{vidPct}%</span>
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.6, marginTop: 6 }}>{completedVideos}/{totalVideos} vidéos · {completedChapters}/{totalChapters} chapitres</div>
-        </div>
+      <div className="welcome-continue" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', borderRadius: 16, padding: '28px 24px', marginBottom: 16, color: 'white', cursor: 'pointer' }} onClick={onContinue}>
+        <div><div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginBottom: 6 }}>REPRENDRE LA FORMATION</div><h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Continue là où tu t&apos;es arrêté →</h2></div>
+        <div className="progress-section"><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ flex: 1 }}><div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 20, height: 8, overflow: 'hidden' }}><div style={{ width: `${vidPct}%`, height: '100%', background: 'white', borderRadius: 20 }} /></div></div><span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'monospace' }}>{vidPct}%</span></div><div style={{ fontSize: 12, opacity: 0.6, marginTop: 6 }}>{completedVideos}/{totalVideos} vidéos · {completedChapters}/{totalChapters} chapitres</div></div>
       </div>
-
-      {/* Fun fact */}
-      <div style={{ background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)', borderRadius: 14, padding: '12px 18px', marginBottom: 16, border: '1px solid #C7D2FE', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ fontSize: 22 }}>🧠</span><div><div style={{ fontSize: 10, fontWeight: 700, color: '#6366F1', textTransform: 'uppercase', letterSpacing: 0.5 }}>Le savais-tu ?</div><div style={{ fontSize: 13, color: '#3730A3', lineHeight: 1.4 }}>{funFact}</div></div>
+      {lastVidInfo && <div className="card" onClick={onContinue} style={{ padding: '12px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>{IC.play}</div>
+        <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Dernière vidéo regardée</div><div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lastVidInfo.title}</div><div style={{ fontSize: 11, color: 'var(--text-sec)' }}>{lastVidInfo.chapterTitle}</div></div>
+        <div style={{ color: 'var(--accent)', flexShrink: 0 }}>{IC.arrowR}</div>
+      </div>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <div className="card" style={{ padding: '14px 16px' }}><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-sec)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>🎯 Objectif de la semaine</div><div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><span style={{ fontSize: 20, fontWeight: 900, fontFamily: 'monospace', color: weeklyVideos >= weeklyGoal ? 'var(--success)' : 'var(--accent)' }}>{weeklyVideos}</span><span style={{ fontSize: 13, color: 'var(--text-sec)' }}>/ {weeklyGoal} vidéos</span></div><div style={{ background: 'var(--border)', borderRadius: 20, height: 6, overflow: 'hidden' }}><div style={{ width: `${weeklyPct}%`, height: '100%', background: weeklyVideos >= weeklyGoal ? 'var(--success)' : 'var(--accent)', borderRadius: 20 }} /></div>{weeklyVideos >= weeklyGoal && <div style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700, marginTop: 6 }}>✅ Objectif atteint !</div>}</div>
+        <div style={{ background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)', borderRadius: 12, padding: '14px 16px', border: '1px solid #C7D2FE', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}><div style={{ fontSize: 10, fontWeight: 700, color: '#6366F1', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>🧠 Le savais-tu ?</div><div style={{ fontSize: 12, color: '#3730A3', lineHeight: 1.4 }}>{funFact}</div></div>
       </div>
-
-      {/* XP bar */}
       <div style={{ padding: 20, marginBottom: 16, background: 'linear-gradient(135deg, #1E1B4B, #312E81)', color: 'white', borderRadius: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ fontSize: 26 }}>{level.emoji}</span><div><div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Niveau {level.level}</div><div style={{ fontSize: 17, fontWeight: 800 }}>{level.name}</div></div></div>
-          <div style={{ textAlign: 'right' }}><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#A5B4FC' }}>{xp}</div><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>XP total</div></div>
-        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ fontSize: 26 }}>{level.emoji}</span><div><div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Niveau {level.level}</div><div style={{ fontSize: 17, fontWeight: 800 }}>{level.name}</div></div></div><div style={{ textAlign: 'right' }}><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#A5B4FC' }}>{xp}</div><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>XP total</div></div></div>
         {nextLevel && <div><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}><span>{level.name}</span><span>{nextLevel.emoji} {nextLevel.name} — {nextLevel.min} XP</span></div><div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 20, height: 6, overflow: 'hidden' }}><div style={{ width: `${Math.min(100, (xpIn / xpFor) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #818CF8, #A5B4FC)', borderRadius: 20 }} /></div></div>}
       </div>
-
-      {/* 4 mini stat cards - 4 cols desktop, 2 cols mobile */}
       <div className="welcome-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>
-          <div style={{ fontSize: 24 }}>🔥</div>
-          <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#F59E0B', lineHeight: 1, marginTop: 4 }}>{streak.current_streak || 0}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jour{(streak.current_streak || 0) > 1 ? 's' : ''} de suite</div>
-        </div>
-        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>
-          {badge ? <><div style={{ fontSize: 24 }}>{badge.emoji}</div><div style={{ fontSize: 14, fontWeight: 800, color: badge.color, marginTop: 4 }}>{badge.name}</div></> : <><div style={{ fontSize: 24, opacity: 0.3 }}>🥉</div><div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>Aucun</div></>}
-          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 2 }}>badge</div>
-        </div>
-        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>
-          <div style={{ fontSize: 24 }}>⏳</div>
-          <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1, marginTop: 4 }}>{daysLeft}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jours restants</div>
-        </div>
-        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>
-          <div style={{ fontSize: 24 }}>📊</div>
-          <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: 'var(--accent)', lineHeight: 1, marginTop: 4 }}>{pct}%</div>
-          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>{completedChapters}/{totalChapters} chap.</div>
-        </div>
+        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}><span style={{ fontSize: 24 }}>🔥</span><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#F59E0B', lineHeight: 1, marginTop: 4 }}>{streak.current_streak || 0}</div><div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jour{(streak.current_streak || 0) > 1 ? 's' : ''}</div></div>
+        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>{badge ? <><span style={{ fontSize: 24 }}>{badge.emoji}</span><div style={{ fontSize: 14, fontWeight: 800, color: badge.color, marginTop: 4 }}>{badge.name}</div></> : <><span style={{ fontSize: 24, opacity: 0.3 }}>🥉</span><div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>Aucun</div></>}<div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 2 }}>badge</div></div>
+        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}><span style={{ fontSize: 24 }}>⏳</span><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1, marginTop: 4 }}>{daysLeft}</div><div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jours</div></div>
+        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}><span style={{ fontSize: 24 }}>📊</span><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: 'var(--accent)', lineHeight: 1, marginTop: 4 }}>{pct}%</div><div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>{completedChapters}/{totalChapters}</div></div>
       </div>
-
-      {/* Badges row */}
-      <div className="card" style={{ padding: '12px 20px', marginBottom: 16 }}><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-sec)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Badges</div><div style={{ display: 'flex', justifyContent: 'space-around' }}>{[...BADGES].reverse().map(b => <div key={b.id} style={{ textAlign: 'center', opacity: completedChapters >= b.min ? 1 : 0.3 }}><div style={{ fontSize: 22 }}>{b.emoji}</div><div style={{ fontSize: 10, fontWeight: 700, color: completedChapters >= b.min ? b.color : 'var(--text-sec)' }}>{b.min}</div></div>)}</div></div>
-
-      {/* Quick links */}
+      <div className="card" style={{ padding: '14px 20px', marginBottom: 16 }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-sec)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Tes badges</div><div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>Plus tu avances, plus tu montes en grade 🚀</div></div><div style={{ display: 'flex', justifyContent: 'space-around' }}>{[...BADGES].reverse().map(b => <div key={b.id} style={{ textAlign: 'center', opacity: completedChapters >= b.min ? 1 : 0.3 }}><div style={{ fontSize: 24 }}>{b.emoji}</div><div style={{ fontSize: 10, fontWeight: 700, color: completedChapters >= b.min ? b.color : 'var(--text-sec)' }}>{b.name}</div><div style={{ fontSize: 9, color: 'var(--text-sec)' }}>{b.min} chap.</div></div>)}</div></div>
+      {pct === 100 && <div onClick={onShowCert} style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', borderRadius: 14, padding: '20px 24px', marginBottom: 16, color: 'white', cursor: 'pointer', textAlign: 'center' }}><div style={{ fontSize: 32, marginBottom: 8 }}>🏆</div><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Félicitations, tu as terminé la formation !</div><div style={{ fontSize: 14, opacity: 0.9 }}>Clique ici pour obtenir ton certificat →</div></div>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div className="card" onClick={() => onNavigate('chapters')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}><div style={{ fontSize: 28, marginBottom: 6 }}>📚</div><div style={{ fontSize: 14, fontWeight: 700 }}>Formation</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Cours et exercices</div></div>
-        <div className="card" onClick={() => onNavigate('games')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}><div style={{ fontSize: 28, marginBottom: 6 }}>🎮</div><div style={{ fontSize: 14, fontWeight: 700 }}>Entraînement</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Calcul mental</div></div>
+        <div className="card" onClick={() => onNavigate('chapters')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 6 }}>📚</div><div style={{ fontSize: 14, fontWeight: 700 }}>Formation</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Cours et exercices</div></div>
+        <div className="card" onClick={() => onNavigate('games')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 6 }}>🎮</div><div style={{ fontSize: 14, fontWeight: 700 }}>Entraînement</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Calcul mental</div></div>
       </div>
     </div>
   )
 }
+
 
 // ═══ COURSE VIEW (shared between Formation + Prépa Brevet) ═══
 function CourseView({ sections, completedVideos, completedChapters, toggleVideoComplete, toggleChapterComplete, trackPdf, earnXP, userId, title, subtitle }) {
@@ -630,7 +606,7 @@ function AdminAssignments({ students }) {
 // ═══ MAIN APP ═══
 export default function Home() {
   const [user, setUser] = useState(null); const [page, setPage] = useState('welcome'); const [toast, setToast] = useState(null); const [loading, setLoading] = useState(true); const [mobileOpen, setMobileOpen] = useState(false)
-  const [students, setStudents] = useState([]); const [allSections, setAllSections] = useState([]); const [videos, setVideos] = useState([]); const [settings, setSettings] = useState({}); const [completedVideos, setCompletedVideos] = useState([]); const [completedChapters, setCompletedChapters] = useState([]); const [streak, setStreak] = useState({}); const [xp, setXp] = useState(0); const [xpPopup, setXpPopup] = useState(null)
+  const [students, setStudents] = useState([]); const [allSections, setAllSections] = useState([]); const [videos, setVideos] = useState([]); const [settings, setSettings] = useState({}); const [completedVideos, setCompletedVideos] = useState([]); const [completedChapters, setCompletedChapters] = useState([]); const [streak, setStreak] = useState({}); const [xp, setXp] = useState(0); const [xpPopup, setXpPopup] = useState(null); const [weeklyVideos, setWeeklyVideos] = useState(0); const [lastVideo, setLastVideo] = useState(null); const [showCert, setShowCert] = useState(false)
   const showToast = useCallback(m => { setToast(m); setTimeout(() => setToast(null), 2500) }, [])
   const formSections = useMemo(() => allSections.filter(s => s.type === 'formation'), [allSections])
   const prepSections = useMemo(() => allSections.filter(s => s.type === 'prep'), [allSections])
@@ -654,8 +630,14 @@ export default function Home() {
   }, [])
 
   const loadStudentData = useCallback(async userId => {
-    const [vpR, cpR] = await Promise.all([supabase.from('video_progress').select('video_id').eq('user_id', userId).eq('completed', true), supabase.from('chapter_progress').select('chapter_id').eq('user_id', userId).eq('completed', true)])
-    setCompletedVideos((vpR.data || []).map(r => r.video_id)); setCompletedChapters((cpR.data || []).map(r => r.chapter_id))
+    const [vpR, cpR] = await Promise.all([supabase.from('video_progress').select('video_id, completed_at').eq('user_id', userId).eq('completed', true).order('completed_at', { ascending: false }), supabase.from('chapter_progress').select('chapter_id').eq('user_id', userId).eq('completed', true)])
+    const vpData = vpR.data || []
+    setCompletedVideos(vpData.map(r => r.video_id)); setCompletedChapters((cpR.data || []).map(r => r.chapter_id))
+    // Weekly count
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+    setWeeklyVideos(vpData.filter(v => v.completed_at && v.completed_at >= weekAgo).length)
+    // Last video
+    if (vpData.length > 0) setLastVideo(vpData[0].video_id)
     try { const { data } = await supabase.from('student_xp').select('total_xp').eq('user_id', userId).single(); if (data) setXp(data.total_xp) } catch {}
   }, [])
 
@@ -702,9 +684,8 @@ export default function Home() {
     <div className="app-layout">
       <Sidebar items={isAdmin ? adminNav : studentNav} current={page} setCurrent={setPage} onLogout={logout} role={user.role} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <div className="main-content">
-        {!isAdmin && page === 'welcome' && <WelcomePage settings={settings} completedChapters={completedChapters.length} totalChapters={totalChapters} completedVideos={completedVideos.length} totalVideos={totalVideos} streak={streak} xp={xp} sections={formSections} onNavigate={setPage} onContinue={handleContinue} />}
+        {!isAdmin && page === 'welcome' && <WelcomePage settings={settings} completedChapters={completedChapters.length} totalChapters={totalChapters} completedVideos={completedVideos.length} totalVideos={totalVideos} streak={streak} xp={xp} sections={formSections} onNavigate={setPage} onContinue={handleContinue} weeklyVideos={weeklyVideos} lastVideo={lastVideo} allVideos={videos} allSections={allSections} userName={user.first_name} onShowCert={() => setShowCert(true)} />}
         {!isAdmin && page === 'chapters' && <CourseView sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} toggleVideoComplete={toggleVideoComplete} toggleChapterComplete={toggleChapterComplete} trackPdf={trackPdf} earnXP={earnXP} userId={user.id} title="Formation" subtitle={`${totalChapters} chapitres · ${totalVideos} vidéos`} />}
-        {!isAdmin && page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
         {!isAdmin && page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
         {isAdmin && page === 'admin-dash' && <AdminDash students={students} sections={allSections} videos={videos} />}
         {isAdmin && page === 'admin-students' && <AdminStudents students={students} reload={loadData} showToast={showToast} />}
@@ -715,6 +696,24 @@ export default function Home() {
       </div>
       {toast && <Toast message={toast} />}
       {xpPopup && <div style={{ position: 'fixed', top: 80, right: 24, background: 'linear-gradient(135deg, #312E81, #1E1B4B)', color: '#A5B4FC', padding: '12px 20px', borderRadius: 14, fontSize: 14, fontWeight: 800, zIndex: 300, display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.3)', animation: 'toastIn 0.3s ease' }}>⚡ +{xpPopup.xp} XP — {xpPopup.label}</div>}
+      {showCert && <div className="modal-overlay" onClick={() => setShowCert(false)}>
+        <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 20, padding: 40, maxWidth: 600, width: '100%', textAlign: 'center' }}>
+          <div style={{ border: '3px solid #F59E0B', borderRadius: 16, padding: '40px 30px', background: 'linear-gradient(135deg, #FFFBEB, #FEF3C7)' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🏆</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 }}>Certificat de réussite</div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: '#78350F', marginBottom: 4 }}>Brevet Booster</div>
+            <div style={{ fontSize: 14, color: '#92400E', marginBottom: 20 }}>Formation Mathématiques — Brevet 2026</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#78350F', marginBottom: 4 }}>Décerné à</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#4F46E5', marginBottom: 20 }}>{user?.first_name} {user?.last_name}</div>
+            <div style={{ fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>Pour avoir complété l&apos;intégralité de la formation<br/>avec succès et détermination.</div>
+            <div style={{ marginTop: 20, fontSize: 12, color: '#B45309' }}>Délivré le {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20 }}>
+            <button className="btn btn-primary" onClick={() => window.print()}>🖨️ Imprimer</button>
+            <button className="btn btn-secondary" onClick={() => setShowCert(false)}>Fermer</button>
+          </div>
+        </div>
+      </div>}
     </div>
   )
 }
