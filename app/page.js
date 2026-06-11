@@ -121,16 +121,20 @@ function WelcomePage({ settings, completedChapters, totalChapters, completedVide
   const xpIn = nextLevel ? xp - level.min : 0; const xpFor = nextLevel ? nextLevel.min - level.min : 1
   const diff = BREVET_DATE - new Date(); const daysLeft = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)))
   return (
-    <div style={{ maxWidth: 700, margin: '0 auto' }}>
+    <div>
       {/* Big continue button */}
-      <div style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', borderRadius: 16, padding: '28px 24px', marginBottom: 20, color: 'white', cursor: 'pointer', transition: 'transform 0.15s' }} onClick={onContinue}>
-        <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginBottom: 6 }}>REPRENDRE LA FORMATION</div>
-        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Continue là où tu t&apos;es arrêté →</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ flex: 1 }}><div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 20, height: 8, overflow: 'hidden' }}><div style={{ width: `${vidPct}%`, height: '100%', background: 'white', borderRadius: 20 }} /></div></div>
-          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'monospace' }}>{vidPct}%</span>
+      <div className="welcome-continue" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', borderRadius: 16, padding: '28px 24px', marginBottom: 20, color: 'white', cursor: 'pointer' }} onClick={onContinue}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginBottom: 6 }}>REPRENDRE LA FORMATION</div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Continue là où tu t&apos;es arrêté →</h2>
         </div>
-        <div style={{ fontSize: 12, opacity: 0.6, marginTop: 6 }}>{completedVideos}/{totalVideos} vidéos · {completedChapters}/{totalChapters} chapitres</div>
+        <div className="progress-section">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ flex: 1 }}><div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 20, height: 8, overflow: 'hidden' }}><div style={{ width: `${vidPct}%`, height: '100%', background: 'white', borderRadius: 20 }} /></div></div>
+            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'monospace' }}>{vidPct}%</span>
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.6, marginTop: 6 }}>{completedVideos}/{totalVideos} vidéos · {completedChapters}/{totalChapters} chapitres</div>
+        </div>
       </div>
 
       {/* Fun fact */}
@@ -147,22 +151,26 @@ function WelcomePage({ settings, completedChapters, totalChapters, completedVide
         {nextLevel && <div><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}><span>{level.name}</span><span>{nextLevel.emoji} {nextLevel.name} — {nextLevel.min} XP</span></div><div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 20, height: 6, overflow: 'hidden' }}><div style={{ width: `${Math.min(100, (xpIn / xpFor) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #818CF8, #A5B4FC)', borderRadius: 20 }} /></div></div>}
       </div>
 
-      {/* 4 mini stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
-        <div className="card" style={{ padding: '16px 14px', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ fontSize: 28 }}>🔥</div>
-          <div><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#F59E0B', lineHeight: 1 }}>{streak.current_streak || 0}</div><div style={{ fontSize: 11, color: 'var(--text-sec)' }}>jour{(streak.current_streak || 0) > 1 ? 's' : ''} de suite</div>{(streak.best_streak || 0) > 0 && <div style={{ fontSize: 10, color: 'var(--text-sec)' }}>Record : {streak.best_streak} 🏆</div>}</div>
+      {/* 4 mini stat cards - 4 cols desktop, 2 cols mobile */}
+      <div className="welcome-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>
+          <div style={{ fontSize: 24 }}>🔥</div>
+          <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#F59E0B', lineHeight: 1, marginTop: 4 }}>{streak.current_streak || 0}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jour{(streak.current_streak || 0) > 1 ? 's' : ''} de suite</div>
         </div>
-        <div className="card" style={{ padding: '16px 14px', display: 'flex', alignItems: 'center', gap: 14 }}>
-          {badge ? <><div style={{ fontSize: 28 }}>{badge.emoji}</div><div><div style={{ fontSize: 16, fontWeight: 800, color: badge.color }}>{badge.name}</div><div style={{ fontSize: 11, color: 'var(--text-sec)' }}>badge actuel</div></div></> : <><div style={{ fontSize: 28, opacity: 0.3 }}>🥉</div><div><div style={{ fontSize: 14, color: 'var(--text-sec)' }}>Aucun badge</div><div style={{ fontSize: 11, color: 'var(--text-sec)' }}>3 chapitres pour le 1er</div></div></>}
+        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>
+          {badge ? <><div style={{ fontSize: 24 }}>{badge.emoji}</div><div style={{ fontSize: 14, fontWeight: 800, color: badge.color, marginTop: 4 }}>{badge.name}</div></> : <><div style={{ fontSize: 24, opacity: 0.3 }}>🥉</div><div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>Aucun</div></>}
+          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 2 }}>badge</div>
         </div>
-        <div className="card" style={{ padding: '16px 14px', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ fontSize: 28 }}>⏳</div>
-          <div><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1 }}>{daysLeft}</div><div style={{ fontSize: 11, color: 'var(--text-sec)' }}>jours avant le brevet</div></div>
+        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>
+          <div style={{ fontSize: 24 }}>⏳</div>
+          <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1, marginTop: 4 }}>{daysLeft}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jours restants</div>
         </div>
-        <div className="card" style={{ padding: '16px 14px', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ fontSize: 28 }}>📊</div>
-          <div><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: 'var(--accent)', lineHeight: 1 }}>{pct}%</div><div style={{ fontSize: 11, color: 'var(--text-sec)' }}>{completedChapters}/{totalChapters} chapitres</div></div>
+        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>
+          <div style={{ fontSize: 24 }}>📊</div>
+          <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: 'var(--accent)', lineHeight: 1, marginTop: 4 }}>{pct}%</div>
+          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>{completedChapters}/{totalChapters} chap.</div>
         </div>
       </div>
 
@@ -171,8 +179,8 @@ function WelcomePage({ settings, completedChapters, totalChapters, completedVide
 
       {/* Quick links */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div className="card" onClick={() => onNavigate('prep')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}><div style={{ fontSize: 28, marginBottom: 6 }}>🎯</div><div style={{ fontSize: 14, fontWeight: 700 }}>Prépa Brevet</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Exercices type brevet</div></div>
-        <div className="card" onClick={() => onNavigate('games')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}><div style={{ fontSize: 28, marginBottom: 6 }}>🎮</div><div style={{ fontSize: 14, fontWeight: 700 }}>Jeux</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Calcul mental</div></div>
+        <div className="card" onClick={() => onNavigate('chapters')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}><div style={{ fontSize: 28, marginBottom: 6 }}>📚</div><div style={{ fontSize: 14, fontWeight: 700 }}>Formation</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Cours et exercices</div></div>
+        <div className="card" onClick={() => onNavigate('games')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}><div style={{ fontSize: 28, marginBottom: 6 }}>🎮</div><div style={{ fontSize: 14, fontWeight: 700 }}>Entraînement</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Calcul mental</div></div>
       </div>
     </div>
   )
@@ -318,7 +326,7 @@ function MathGame({ userId, type, title, emoji, gen, onBack, earnXP }) {
   const start = () => { setSt('playing'); setSc(0); setTl(60); nq() }
   useEffect(() => { if (st !== 'playing' || tl <= 0) { if (st === 'playing' && tl <= 0) { setSt('done'); (async () => { try { const { data } = await supabase.from('game_records').select('best_score').eq('user_id', userId).eq('game_type', type).single(); if (data) { if (sc > data.best_score) await supabase.from('game_records').update({ best_score: sc }).eq('user_id', userId).eq('game_type', type) } else { await supabase.from('game_records').insert({ user_id: userId, game_type: type, best_score: sc }) }; if (sc > rec) setRec(sc); await earnXP(userId, 'game_played') } catch {} })() }; return }; const t = setTimeout(() => setTl(p => p - 1), 1000); return () => clearTimeout(t) }, [tl, st])
   const chk = () => { if (!inp || !q) return; if (parseInt(inp) === q.answer) { setSc(p => p + 1); setFb('ok'); setTimeout(() => nq(), 200) } else { setFb('no'); setTimeout(() => setFb(null), 400); setInp('') } }
-  if (st === 'ready') return <div style={{ textAlign: 'center', padding: '60px 20px' }}><div style={{ fontSize: 60, marginBottom: 16 }}>{emoji}</div><h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>{title}</h2><p style={{ color: 'var(--text-sec)', fontSize: 15, marginBottom: 24 }}>60 secondes pour un max de bonnes réponses !</p>{rec > 0 && <div style={{ display: 'inline-block', padding: '8px 20px', borderRadius: 12, background: '#FEF3C7', color: '#92400E', fontWeight: 700, marginBottom: 20 }}>🏆 Record actuel : {rec}</div>}<br/><button className="btn btn-primary" onClick={start} style={{ padding: '16px 50px', fontSize: 16, borderRadius: 14 }}>C&apos;est parti !</button><div style={{ marginTop: 16 }}><button className="btn btn-secondary" onClick={onBack}>← Retour aux jeux</button></div></div>
+  if (st === 'ready') return <div style={{ textAlign: 'center', padding: '60px 20px' }}><div style={{ fontSize: 60, marginBottom: 16 }}>{emoji}</div><h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>{title}</h2><p style={{ color: 'var(--text-sec)', fontSize: 15, marginBottom: 24 }}>60 secondes pour un max de bonnes réponses !</p>{rec > 0 && <div style={{ display: 'inline-block', padding: '8px 20px', borderRadius: 12, background: '#FEF3C7', color: '#92400E', fontWeight: 700, marginBottom: 20 }}>🏆 Record actuel : {rec}</div>}<br/><button className="btn btn-primary" onClick={start} style={{ padding: '16px 50px', fontSize: 16, borderRadius: 14 }}>C&apos;est parti !</button><div style={{ marginTop: 16 }}><button className="btn btn-secondary" onClick={onBack}>← Retour</button></div></div>
   if (st === 'done') return <div style={{ textAlign: 'center', padding: '60px 20px' }}><div style={{ fontSize: 60, marginBottom: 16 }}>{sc >= rec && rec > 0 ? '🎉' : '⏱️'}</div><div style={{ fontSize: 52, fontWeight: 900, fontFamily: 'monospace', color: 'var(--accent)' }}>{sc}</div><p style={{ color: 'var(--text-sec)', fontSize: 16, marginBottom: 4 }}>bonnes réponses</p>{sc > rec && <div style={{ padding: '8px 20px', borderRadius: 12, background: 'var(--success-bg)', color: 'var(--success)', fontWeight: 700, display: 'inline-block', marginTop: 8, marginBottom: 16 }}>🎉 Nouveau record !</div>}<div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20 }}><button className="btn btn-primary" onClick={start} style={{ padding: '14px 30px' }}>Rejouer</button><button className="btn btn-secondary" onClick={onBack} style={{ padding: '14px 30px' }}>Retour</button></div></div>
   return <div style={{ maxWidth: 500, margin: '0 auto' }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}><span style={{ fontSize: 14, color: 'var(--text-sec)' }}>Score : <span style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 800 }}>{sc}</span></span><span style={{ fontSize: 28, fontWeight: 900, fontFamily: 'monospace', color: tl <= 10 ? 'var(--danger)' : 'var(--text)' }}>{tl}s</span></div><GameTimer tl={tl} /><div style={{ textAlign: 'center', padding: '48px 0' }}><div style={{ fontSize: 48, fontWeight: 900, fontFamily: 'monospace', marginBottom: 24 }}>{q?.display} = ?</div><div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}><input ref={ir} type="number" value={inp} onChange={e => setInp(e.target.value)} onKeyDown={e => e.key === 'Enter' && chk()} autoFocus style={{ width: 130, padding: 14, fontSize: 24, fontWeight: 800, textAlign: 'center', borderRadius: 14, border: `3px solid ${fb === 'ok' ? 'var(--success)' : fb === 'no' ? 'var(--danger)' : 'var(--border)'}`, background: fb === 'ok' ? 'var(--success-bg)' : fb === 'no' ? 'var(--danger-bg)' : 'white', outline: 'none', fontFamily: 'monospace', transition: 'border-color 0.2s, background 0.2s' }} /><button className="btn btn-primary" onClick={chk} style={{ padding: '14px 24px', fontSize: 16 }}>OK</button></div></div></div>
 }
@@ -331,7 +339,7 @@ function GamesPage({ userId, earnXP }) {
   if (active === 'calc') return <MathGame userId={userId} type="calcul_mental" title="Calcul mental" emoji="🧮" gen={calcGen} onBack={() => setActive(null)} earnXP={earnXP} />
   return (
     <div style={{ maxWidth: 500, margin: '0 auto' }}>
-      <h1 className="page-title">Jeux</h1>
+      <h1 className="page-title">Entraînement</h1>
       <p className="page-subtitle">Entraîne-toi en t&apos;amusant et bats tes records !</p>
       {[{ id: 'multi', emoji: '✖️', title: 'Tables de multiplication', desc: '60 secondes de multiplications non-stop', color: '#7C3AED', bg: '#EDE9FE', rec: records.multiplication },
         { id: 'calc', emoji: '🧮', title: 'Calcul mental', desc: 'Additions, soustractions et multiplications', color: '#2563EB', bg: '#DBEAFE', rec: records.calcul_mental }
@@ -687,7 +695,7 @@ export default function Home() {
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-sec)' }}>Chargement...</div>
   if (!user) return <LoginPage onLogin={login} />
   const isAdmin = user.role === 'admin'
-  const studentNav = [{ id: 'welcome', label: 'Accueil', icon: IC.home }, { id: 'chapters', label: 'Formation', icon: IC.book }, { id: 'prep', label: 'Prépa Brevet', icon: IC.target }, { id: 'simulator', label: 'Simulateur', icon: IC.chart }, { id: 'assignments', label: 'Mes devoirs', icon: IC.edit }, { id: 'games', label: 'Jeux', icon: IC.game }]
+  const studentNav = [{ id: 'welcome', label: 'Accueil', icon: IC.home }, { id: 'chapters', label: 'Formation', icon: IC.book }, { id: 'games', label: 'Entraînement', icon: IC.game }]
   const adminNav = [{ id: 'admin-dash', label: 'Dashboard', icon: IC.dash }, { id: 'admin-students', label: 'Élèves', icon: IC.users }, { id: 'admin-formation', label: 'Formation', icon: IC.book }, { id: 'admin-prep', label: 'Prépa Brevet', icon: IC.target }, { id: 'admin-progress', label: 'Progression', icon: IC.chart }, { id: 'admin-assignments', label: 'Devoirs', icon: IC.edit }]
 
   return (
@@ -696,9 +704,7 @@ export default function Home() {
       <div className="main-content">
         {!isAdmin && page === 'welcome' && <WelcomePage settings={settings} completedChapters={completedChapters.length} totalChapters={totalChapters} completedVideos={completedVideos.length} totalVideos={totalVideos} streak={streak} xp={xp} sections={formSections} onNavigate={setPage} onContinue={handleContinue} />}
         {!isAdmin && page === 'chapters' && <CourseView sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} toggleVideoComplete={toggleVideoComplete} toggleChapterComplete={toggleChapterComplete} trackPdf={trackPdf} earnXP={earnXP} userId={user.id} title="Formation" subtitle={`${totalChapters} chapitres · ${totalVideos} vidéos`} />}
-        {!isAdmin && page === 'prep' && <CourseView sections={prepSections} completedVideos={completedVideos} completedChapters={completedChapters} toggleVideoComplete={toggleVideoComplete} toggleChapterComplete={toggleChapterComplete} trackPdf={trackPdf} earnXP={earnXP} userId={user.id} title="Prépa Brevet" subtitle="Exercices type brevet et méthodologie" />}
-        {!isAdmin && page === 'simulator' && <SimulatorPage />}
-        {!isAdmin && page === 'assignments' && <AssignmentsPage userId={user.id} earnXP={earnXP} />}
+        {!isAdmin && page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
         {!isAdmin && page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
         {isAdmin && page === 'admin-dash' && <AdminDash students={students} sections={allSections} videos={videos} />}
         {isAdmin && page === 'admin-students' && <AdminStudents students={students} reload={loadData} showToast={showToast} />}
