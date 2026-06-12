@@ -119,50 +119,136 @@ function Sidebar({ items, current, setCurrent, onLogout, role, mobileOpen, setMo
 }
 
 // ═══ WELCOME (improved) ═══
-function WelcomePage({ settings, completedChapters, totalChapters, completedVideos, totalVideos, streak, xp, sections, onNavigate, onContinue, weeklyVideos, lastVideo, allVideos, allSections, userName, onShowCert }) {
-  const pct = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0
-  const vidPct = totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0
-  const badge = getBadge(completedChapters)
-  const [funFact] = useState(() => FUN_FACTS[Math.floor(Math.random() * FUN_FACTS.length)])
+function WelcomePage({ completedChapters, totalChapters, completedVideos, totalVideos, streak, xp, sections, onNavigate, onContinue, allSections, userName }) {
+  const pct = totalChapters > 0 ? Math.round((completedChapters.length / totalChapters) * 100) : 0
+  const badge = getBadge(completedChapters.length)
   const level = getLevel(xp); const nextLevel = getNextLevel(xp)
   const xpIn = nextLevel ? xp - level.min : 0; const xpFor = nextLevel ? nextLevel.min - level.min : 1
   const diff = BREVET_DATE - new Date(); const daysLeft = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)))
-  const weeklyGoal = 5; const weeklyPct = Math.min(100, Math.round((weeklyVideos / weeklyGoal) * 100))
-  const lastVidInfo = useMemo(() => {
-    if (!lastVideo) return null; const vid = allVideos.find(v => v.id === lastVideo); if (!vid) return null
-    const ch = allSections.flatMap(s => s.chapters || []).find(c => (c.videos || []).some(v => v.id === vid.id))
-    return { ...vid, chapterTitle: ch?.title || '' }
-  }, [lastVideo, allVideos, allSections])
+
+  // Compute section progress for roadmap
+  const sectionProgress = useMemo(() => {
+    return sections.map(sec => {
+      const chs = sec.chapters || []
+      const total = chs.length
+      const done = chs.filter(c => completedChapters.includes(c.id)).length
+      const status = total === 0 ? 'empty' : done === total ? 'done' : done > 0 ? 'active' : 'todo'
+      return { ...sec, total, done, status }
+    })
+  }, [sections, completedChapters])
+
+  const completedSections = sectionProgress.filter(s => s.status === 'done').length
+  const roadmapPct = sectionProgress.length > 0 ? Math.round((completedSections / sectionProgress.length) * 100) : 0
+
   return (
     <div>
-      <div className="welcome-continue" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', borderRadius: 16, padding: '28px 24px', marginBottom: 16, color: 'white', cursor: 'pointer' }} onClick={onContinue}>
-        <div><div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginBottom: 6 }}>REPRENDRE LA FORMATION</div><h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Continue là où tu t&apos;es arrêté →</h2></div>
-        <div className="progress-section"><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ flex: 1 }}><div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 20, height: 8, overflow: 'hidden' }}><div style={{ width: `${vidPct}%`, height: '100%', background: 'white', borderRadius: 20 }} /></div></div><span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'monospace' }}>{vidPct}%</span></div><div style={{ fontSize: 12, opacity: 0.6, marginTop: 6 }}>{completedVideos}/{totalVideos} vidéos · {completedChapters}/{totalChapters} chapitres</div></div>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 2 }}>Salut {userName || 'champion'} \u{1F44B}</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-sec)' }}>Brevet de maths dans <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--accent)' }}>{daysLeft} jours</span></p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, #1E1B4B, #312E81)', padding: '10px 18px', borderRadius: 12, color: 'white' }}>
+          <span style={{ fontSize: 20 }}>{level.emoji}</span>
+          <div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Niveau {level.level}</div>
+            <div style={{ fontSize: 15, fontWeight: 800 }}>{level.name} <span style={{ fontFamily: 'monospace', color: '#A5B4FC', marginLeft: 4 }}>{xp} XP</span></div>
+          </div>
+        </div>
       </div>
-      {lastVidInfo && <div className="card" onClick={onContinue} style={{ padding: '12px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>{IC.play}</div>
-        <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Dernière vidéo regardée</div><div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lastVidInfo.title}</div><div style={{ fontSize: 11, color: 'var(--text-sec)' }}>{lastVidInfo.chapterTitle}</div></div>
-        <div style={{ color: 'var(--accent)', flexShrink: 0 }}>{IC.arrowR}</div>
-      </div>}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-        <div className="card" style={{ padding: '14px 16px' }}><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-sec)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>🎯 Objectif de la semaine</div><div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><span style={{ fontSize: 20, fontWeight: 900, fontFamily: 'monospace', color: weeklyVideos >= weeklyGoal ? 'var(--success)' : 'var(--accent)' }}>{weeklyVideos}</span><span style={{ fontSize: 13, color: 'var(--text-sec)' }}>/ {weeklyGoal} vidéos</span></div><div style={{ background: 'var(--border)', borderRadius: 20, height: 6, overflow: 'hidden' }}><div style={{ width: `${weeklyPct}%`, height: '100%', background: weeklyVideos >= weeklyGoal ? 'var(--success)' : 'var(--accent)', borderRadius: 20 }} /></div>{weeklyVideos >= weeklyGoal && <div style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700, marginTop: 6 }}>✅ Objectif atteint !</div>}</div>
-        <div style={{ background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)', borderRadius: 12, padding: '14px 16px', border: '1px solid #C7D2FE', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}><div style={{ fontSize: 10, fontWeight: 700, color: '#6366F1', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>🧠 Le savais-tu ?</div><div style={{ fontSize: 12, color: '#3730A3', lineHeight: 1.4 }}>{funFact}</div></div>
+
+      {/* XP progress to next level */}
+      {nextLevel && (
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-sec)', marginBottom: 4 }}>
+            <span>{level.emoji} {level.name}</span>
+            <span>{nextLevel.emoji} {nextLevel.name} — {nextLevel.min} XP</span>
+          </div>
+          <div style={{ background: 'var(--border)', borderRadius: 20, height: 6, overflow: 'hidden' }}>
+            <div style={{ width: Math.min(100, (xpIn / xpFor) * 100) + '%', height: '100%', background: 'linear-gradient(90deg, var(--accent), var(--accent-dark))', borderRadius: 20 }} />
+          </div>
+        </div>
+      )}
+
+      {/* ═══ ROADMAP ═══ */}
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Ton parcours</div>
+          <div style={{ fontSize: 14, fontWeight: 800, fontFamily: 'monospace', color: 'var(--accent)' }}>{pct}%</div>
+        </div>
+
+        {/* Roadmap line with dots */}
+        <div style={{ position: 'relative', padding: '0 24px', marginBottom: 12 }}>
+          {/* Background line */}
+          <div style={{ position: 'absolute', top: 16, left: 24, right: 24, height: 3, background: 'var(--border)', borderRadius: 2 }} />
+          {/* Active line */}
+          <div style={{ position: 'absolute', top: 16, left: 24, width: roadmapPct + '%', maxWidth: 'calc(100% - 48px)', height: 3, background: 'var(--accent)', borderRadius: 2, transition: 'width 0.8s ease' }} />
+          {/* Dots */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
+            {sectionProgress.map((sec, i) => (
+              <div key={sec.id} style={{ textAlign: 'center', width: 72, flexShrink: 0 }}>
+                {sec.status === 'done' ? (
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--success)', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(5,150,105,0.3)' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                ) : sec.status === 'active' ? (
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent)', border: '3px solid white', boxShadow: '0 0 0 3px var(--accent), 0 2px 8px rgba(79,70,229,0.3)', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: 'white', fontFamily: 'monospace' }}>{sec.done}/{sec.total}</span>
+                  </div>
+                ) : (
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--card)', border: '2px solid var(--border)', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 14 }}>{sec.emoji}</span>
+                  </div>
+                )}
+                <div style={{ fontSize: 11, fontWeight: 600, color: sec.status === 'done' ? 'var(--success)' : sec.status === 'active' ? 'var(--accent)' : 'var(--text-sec)', lineHeight: 1.3 }}>{sec.title}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <div style={{ padding: 20, marginBottom: 16, background: 'linear-gradient(135deg, #1E1B4B, #312E81)', color: 'white', borderRadius: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ fontSize: 26 }}>{level.emoji}</span><div><div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Niveau {level.level}</div><div style={{ fontSize: 17, fontWeight: 800 }}>{level.name}</div></div></div><div style={{ textAlign: 'right' }}><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#A5B4FC' }}>{xp}</div><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>XP total</div></div></div>
-        {nextLevel && <div><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}><span>{level.name}</span><span>{nextLevel.emoji} {nextLevel.name} — {nextLevel.min} XP</span></div><div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 20, height: 6, overflow: 'hidden' }}><div style={{ width: `${Math.min(100, (xpIn / xpFor) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #818CF8, #A5B4FC)', borderRadius: 20 }} /></div></div>}
+
+      {/* Continue button */}
+      <button onClick={onContinue} style={{ width: '100%', padding: 16, fontSize: 16, fontWeight: 700, background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', color: 'white', border: 'none', borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, transition: 'all 0.15s' }}>
+        Continuer la formation \u{2192}
+      </button>
+
+      {/* Stats row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
+        <div className="card" style={{ padding: '16px 12px', textAlign: 'center' }}>
+          <div style={{ fontSize: 24 }}>\u{1F525}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#F59E0B', lineHeight: 1, marginTop: 4 }}>{streak.current_streak || 0}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jour{(streak.current_streak || 0) > 1 ? 's' : ''} de suite</div>
+        </div>
+        <div className="card" style={{ padding: '16px 12px', textAlign: 'center' }}>
+          {badge ? (
+            <><div style={{ fontSize: 24 }}>{badge.emoji}</div><div style={{ fontSize: 15, fontWeight: 800, color: badge.color, marginTop: 4 }}>{badge.name}</div></>
+          ) : (
+            <><div style={{ fontSize: 24, opacity: 0.3 }}>\u{1F949}</div><div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>3 chap. pour le 1er</div></>
+          )}
+          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 2 }}>badge</div>
+        </div>
+        <div className="card" style={{ padding: '16px 12px', textAlign: 'center' }}>
+          <div style={{ fontSize: 24 }}>\u{23F3}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1, marginTop: 4 }}>{daysLeft}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jours restants</div>
+        </div>
       </div>
-      <div className="welcome-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}><span style={{ fontSize: 24 }}>🔥</span><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#F59E0B', lineHeight: 1, marginTop: 4 }}>{streak.current_streak || 0}</div><div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jour{(streak.current_streak || 0) > 1 ? 's' : ''}</div></div>
-        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}>{badge ? <><span style={{ fontSize: 24 }}>{badge.emoji}</span><div style={{ fontSize: 14, fontWeight: 800, color: badge.color, marginTop: 4 }}>{badge.name}</div></> : <><span style={{ fontSize: 24, opacity: 0.3 }}>🥉</span><div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>Aucun</div></>}<div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 2 }}>badge</div></div>
-        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}><span style={{ fontSize: 24 }}>⏳</span><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1, marginTop: 4 }}>{daysLeft}</div><div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jours</div></div>
-        <div className="card" style={{ padding: '16px 10px', textAlign: 'center' }}><span style={{ fontSize: 24 }}>📊</span><div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: 'var(--accent)', lineHeight: 1, marginTop: 4 }}>{pct}%</div><div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>{completedChapters}/{totalChapters}</div></div>
-      </div>
-      <div className="card" style={{ padding: '14px 20px', marginBottom: 16 }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-sec)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Tes badges</div><div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>Plus tu avances, plus tu montes en grade 🚀</div></div><div style={{ display: 'flex', justifyContent: 'space-around' }}>{[...BADGES].reverse().map(b => <div key={b.id} style={{ textAlign: 'center', opacity: completedChapters >= b.min ? 1 : 0.3 }}><div style={{ fontSize: 24 }}>{b.emoji}</div><div style={{ fontSize: 10, fontWeight: 700, color: completedChapters >= b.min ? b.color : 'var(--text-sec)' }}>{b.name}</div><div style={{ fontSize: 9, color: 'var(--text-sec)' }}>{b.min} chap.</div></div>)}</div></div>
-      {pct === 100 && <div onClick={onShowCert} style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', borderRadius: 14, padding: '20px 24px', marginBottom: 16, color: 'white', cursor: 'pointer', textAlign: 'center' }}><div style={{ fontSize: 32, marginBottom: 8 }}>🏆</div><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Félicitations, tu as terminé la formation !</div><div style={{ fontSize: 14, opacity: 0.9 }}>Clique ici pour obtenir ton certificat →</div></div>}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div className="card" onClick={() => onNavigate('chapters')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 6 }}>📚</div><div style={{ fontSize: 14, fontWeight: 700 }}>Formation</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Cours et exercices</div></div>
-        <div className="card" onClick={() => onNavigate('games')} style={{ padding: 18, cursor: 'pointer', textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 6 }}>🎮</div><div style={{ fontSize: 14, fontWeight: 700 }}>Entraînement</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Calcul mental</div></div>
+
+      {/* Badges progression */}
+      <div className="card" style={{ padding: '14px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-sec)' }}>Badges</div>
+          <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>Plus tu avances, plus tu montes en grade</div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+          {[...BADGES].reverse().map(b => (
+            <div key={b.id} style={{ textAlign: 'center', opacity: completedChapters.length >= b.min ? 1 : 0.3 }}>
+              <div style={{ fontSize: 24 }}>{b.emoji}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: completedChapters.length >= b.min ? b.color : 'var(--text-sec)' }}>{b.name}</div>
+              <div style={{ fontSize: 9, color: 'var(--text-sec)' }}>{b.min} chap.</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -717,7 +803,7 @@ export default function Home() {
     <div className="app-layout">
       <Sidebar items={isAdmin ? adminNav : studentNav} current={page} setCurrent={setPage} onLogout={logout} role={user.role} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <div className="main-content">
-        {!isAdmin && page === 'welcome' && <WelcomePage settings={settings} completedChapters={completedChapters.length} totalChapters={totalChapters} completedVideos={completedVideos.length} totalVideos={totalVideos} streak={streak} xp={xp} sections={formSections} onNavigate={setPage} onContinue={handleContinue} weeklyVideos={weeklyVideos} lastVideo={lastVideo} allVideos={videos} allSections={allSections} userName={user.first_name} onShowCert={() => setShowCert(true)} />}
+        {!isAdmin && page === 'welcome' && <WelcomePage completedChapters={completedChapters} totalChapters={totalChapters} completedVideos={completedVideos.length} totalVideos={totalVideos} streak={streak} xp={xp} sections={formSections} onNavigate={setPage} onContinue={handleContinue} allSections={allSections} userName={user.first_name} />}
         {!isAdmin && page === 'chapters' && <CourseView sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} toggleVideoComplete={toggleVideoComplete} toggleChapterComplete={toggleChapterComplete} trackPdf={trackPdf} earnXP={earnXP} userId={user.id} title="Formation" subtitle={`${totalChapters} chapitres · ${totalVideos} vidéos`} />}
         {!isAdmin && page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
         {isAdmin && page === 'admin-dash' && <AdminDash students={students} sections={allSections} videos={videos} />}
