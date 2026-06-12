@@ -145,7 +145,7 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 2 }}>Salut {userName || 'champion'} \u{1F44B}</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 2 }}>Salut {userName || 'champion'} 👋</h1>
           <p style={{ fontSize: 14, color: 'var(--text-sec)' }}>Brevet de maths dans <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--accent)' }}>{daysLeft} jours</span></p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, #1E1B4B, #312E81)', padding: '10px 18px', borderRadius: 12, color: 'white' }}>
@@ -209,13 +209,13 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
 
       {/* Continue button */}
       <button onClick={onContinue} style={{ width: '100%', padding: 16, fontSize: 16, fontWeight: 700, background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', color: 'white', border: 'none', borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, transition: 'all 0.15s' }}>
-        Continuer la formation \u{2192}
+        Continuer la formation →
       </button>
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
         <div className="card" style={{ padding: '16px 12px', textAlign: 'center' }}>
-          <div style={{ fontSize: 24 }}>\u{1F525}</div>
+          <div style={{ fontSize: 24 }}>🔥</div>
           <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: '#F59E0B', lineHeight: 1, marginTop: 4 }}>{streak.current_streak || 0}</div>
           <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jour{(streak.current_streak || 0) > 1 ? 's' : ''} de suite</div>
         </div>
@@ -223,12 +223,12 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
           {badge ? (
             <><div style={{ fontSize: 24 }}>{badge.emoji}</div><div style={{ fontSize: 15, fontWeight: 800, color: badge.color, marginTop: 4 }}>{badge.name}</div></>
           ) : (
-            <><div style={{ fontSize: 24, opacity: 0.3 }}>\u{1F949}</div><div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>3 chap. pour le 1er</div></>
+            <><div style={{ fontSize: 24, opacity: 0.3 }}>🥉</div><div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>3 chap. pour le 1er</div></>
           )}
           <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 2 }}>badge</div>
         </div>
         <div className="card" style={{ padding: '16px 12px', textAlign: 'center' }}>
-          <div style={{ fontSize: 24 }}>\u{23F3}</div>
+          <div style={{ fontSize: 24 }}>⏳</div>
           <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1, marginTop: 4 }}>{daysLeft}</div>
           <div style={{ fontSize: 11, color: 'var(--text-sec)', marginTop: 4 }}>jours restants</div>
         </div>
