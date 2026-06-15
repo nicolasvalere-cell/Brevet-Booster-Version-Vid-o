@@ -93,9 +93,27 @@ body { font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; backgrou
   .modal { max-width:100%; margin:10px; padding:20px; }
   .login-card { padding:28px 20px; }
   .toast { bottom:16px; max-width:calc(100vw - 32px); font-size:13px; padding:10px 18px; }
-  .welcome-stats { grid-template-columns: 1fr 1fr !important; }
-  .welcome-continue { padding: 22px 20px !important; }
+
+  /* Welcome page mobile */
+  .welcome-header { flex-direction:column !important; align-items:flex-start !important; gap:12px !important; }
+  .welcome-xp-badge { width:100% !important; justify-content:center !important; }
+  .welcome-continue { padding: 20px 18px !important; }
   .welcome-continue h2 { font-size: 18px !important; }
+  .welcome-stats { grid-template-columns: repeat(3, 1fr) !important; }
+  .welcome-roadmap { padding: 20px 16px !important; }
+  .welcome-roadmap-dots { overflow-x:auto; padding-bottom:8px; gap:0 !important; }
+  .welcome-roadmap-dot { width:60px !important; min-width:60px !important; }
+  .welcome-roadmap-dot-circle { width:28px !important; height:28px !important; }
+  .welcome-roadmap-dot-label { font-size:9px !important; }
+  .welcome-badges-phrase { display:none !important; }
+  .welcome-quick-links { grid-template-columns: 1fr 1fr !important; }
+
+  /* Video player mobile */
+  .video-nav-buttons { flex-direction:column !important; }
+  .video-nav-buttons .btn { width:100% !important; }
+
+  /* Chapter cards mobile */
+  .chapter-pdf-grid { grid-template-columns: 1fr !important; }
 }
 
 /* Desktop improvements */
@@ -109,5 +127,7 @@ body { font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; backgrou
 @media (max-width: 480px) {
   .main-content { padding: 68px 12px 20px !important; }
   .page-title { font-size: 18px; }
-  .welcome-stats { grid-template-columns: 1fr 1fr !important; }
+  .welcome-stats { grid-template-columns: 1fr 1fr 1fr !important; }
+  .welcome-roadmap-dot { width:52px !important; min-width:52px !important; }
+  .welcome-roadmap-dot-circle { width:24px !important; height:24px !important; }
 }
