@@ -143,12 +143,12 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+      <div className="welcome-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 2 }}>Salut {userName || 'champion'} 👋</h1>
           <p style={{ fontSize: 14, color: 'var(--text-sec)' }}>Brevet de maths dans <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--accent)' }}>{daysLeft} jours</span></p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, #1E1B4B, #312E81)', padding: '10px 18px', borderRadius: 12, color: 'white' }}>
+        <div className="welcome-xp-badge" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, #1E1B4B, #312E81)', padding: '10px 18px', borderRadius: 12, color: 'white' }}>
           <span style={{ fontSize: 20 }}>{level.emoji}</span>
           <div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Niveau {level.level}</div>
@@ -171,7 +171,7 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
       )}
 
       {/* ═══ ROADMAP ═══ */}
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px', marginBottom: 20 }}>
+      <div className="welcome-roadmap" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Ton parcours</div>
           <div style={{ fontSize: 14, fontWeight: 800, fontFamily: 'monospace', color: 'var(--accent)' }}>{pct}%</div>
@@ -184,23 +184,23 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
           {/* Active line */}
           <div style={{ position: 'absolute', top: 16, left: 24, width: roadmapPct + '%', maxWidth: 'calc(100% - 48px)', height: 3, background: 'var(--accent)', borderRadius: 2, transition: 'width 0.8s ease' }} />
           {/* Dots */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
+          <div className="welcome-roadmap-dots" style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
             {sectionProgress.map((sec, i) => (
-              <div key={sec.id} style={{ textAlign: 'center', width: 72, flexShrink: 0 }}>
+              <div key={sec.id} className="welcome-roadmap-dot" style={{ textAlign: 'center', width: 72, flexShrink: 0 }}>
                 {sec.status === 'done' ? (
-                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--success)', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(5,150,105,0.3)' }}>
+                  <div className="welcome-roadmap-dot-circle" style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--success)', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(5,150,105,0.3)' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                   </div>
                 ) : sec.status === 'active' ? (
-                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent)', border: '3px solid white', boxShadow: '0 0 0 3px var(--accent), 0 2px 8px rgba(79,70,229,0.3)', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div className="welcome-roadmap-dot-circle" style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent)', border: '3px solid white', boxShadow: '0 0 0 3px var(--accent), 0 2px 8px rgba(79,70,229,0.3)', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: 11, fontWeight: 800, color: 'white', fontFamily: 'monospace' }}>{sec.done}/{sec.total}</span>
                   </div>
                 ) : (
-                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--card)', border: '2px solid var(--border)', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div className="welcome-roadmap-dot-circle" style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--card)', border: '2px solid var(--border)', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: 14 }}>{sec.emoji}</span>
                   </div>
                 )}
-                <div style={{ fontSize: 11, fontWeight: 600, color: sec.status === 'done' ? 'var(--success)' : sec.status === 'active' ? 'var(--accent)' : 'var(--text-sec)', lineHeight: 1.3 }}>{sec.title}</div>
+                <div className="welcome-roadmap-dot-label" style={{ fontSize: 11, fontWeight: 600, color: sec.status === 'done' ? 'var(--success)' : sec.status === 'active' ? 'var(--accent)' : 'var(--text-sec)', lineHeight: 1.3 }}>{sec.title}</div>
               </div>
             ))}
           </div>
@@ -238,7 +238,7 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
       <div className="card" style={{ padding: '14px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-sec)' }}>Badges</div>
-          <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>Plus tu avances, plus tu montes en grade</div>
+          <div className="welcome-badges-phrase" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>Plus tu avances, plus tu montes en grade</div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-around' }}>
           {[...BADGES].reverse().map(b => (
@@ -306,7 +306,7 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
         : embed?.type === 'mp4' ? <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16, background: '#000' }}><video controls style={{ width: '100%', display: 'block' }} src={embed.url} /></div>
         : <div style={{ borderRadius: 14, background: 'var(--bg)', border: '1px solid var(--border)', padding: 60, textAlign: 'center', marginBottom: 16 }}><div style={{ fontSize: 40, marginBottom: 8 }}>🎥</div><p style={{ color: 'var(--text-sec)' }}>Vidéo bientôt disponible</p></div>}
         {/* Nav buttons */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div className="video-nav-buttons" style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
           <button onClick={() => idx > 0 && setViewingVideo(allVids[idx - 1])} disabled={idx <= 0} className="btn btn-secondary" style={{ flex: 1, minWidth: 100, opacity: idx > 0 ? 1 : 0.4 }}>{IC.arrowL} Préc.</button>
           <button onClick={() => { toggleVideoComplete(viewingVideo.id); if (!isDone) earnXP(userId, 'watch_video') }} className={`btn ${isDone ? 'btn-secondary' : 'btn-primary'}`} style={{ flex: 2, minWidth: 140 }}>{isDone ? '✅ Vue' : 'Marquer comme vue'}</button>
           <button onClick={() => idx < allVids.length - 1 && setViewingVideo(allVids[idx + 1])} disabled={idx >= allVids.length - 1} className="btn btn-secondary" style={{ flex: 1, minWidth: 100, opacity: idx < allVids.length - 1 ? 1 : 0.4 }}>Suiv. {IC.arrowR}</button>
@@ -396,7 +396,7 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
                       }) : <div style={{ padding: '20px 14px', fontSize: 14, color: 'var(--text-sec)', textAlign: 'center' }}>Aucune vidéo pour le moment</div>}
                     </div>
                     {/* PDF buttons */}
-                    <div style={{ padding: '8px 16px 14px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                    <div className="chapter-pdf-grid" style={{ padding: '8px 16px 14px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                       {[['📘', 'Cours', ch.pdf_url, 'cours', '#EEF2FF', '#4F46E5', '#C7D2FE'], ['✏️', 'Exercices', ch.exercises_pdf_url, 'exercices', '#FEF2F2', '#DC2626', '#FECACA'], ['📝', 'Auto-éval', ch.eval_pdf_url, 'auto-eval', '#FFFBEB', '#92400E', '#FDE68A']].map(([icon, label, url, type, bg, color, border]) => (
                         <button key={type} onClick={() => url && openPdf(url, ch.title, type)} disabled={!url} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 8px', borderRadius: 10, border: `1.5px solid ${url ? border : 'var(--border)'}`, background: url ? bg : 'var(--bg)', color: url ? color : 'var(--text-sec)', fontSize: 13, fontWeight: 700, cursor: url ? 'pointer' : 'default', fontFamily: 'inherit', opacity: url ? 1 : 0.35, transition: 'all 0.15s' }}>{icon} {label}</button>
                       ))}
