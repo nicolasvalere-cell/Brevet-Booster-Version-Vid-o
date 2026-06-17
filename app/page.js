@@ -170,6 +170,14 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
         </div>
       )}
 
+      {/* Guide for new students */}
+      {pct === 0 && (
+        <div style={{ background: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)', border: '1px solid #6EE7B7', borderRadius: 14, padding: '18px 22px', marginBottom: 20 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#065F46', marginBottom: 6 }}>🎯 Par où commencer ?</div>
+          <div style={{ fontSize: 14, color: '#047857', lineHeight: 1.6 }}>1. Clique sur <b>Continuer la formation</b> ci-dessous<br/>2. Commence par la première section<br/>3. Regarde les vidéos et coche-les quand c&apos;est fait<br/>4. Fais les exercices PDF pour t&apos;entraîner</div>
+        </div>
+      )}
+
       {/* ═══ ROADMAP ═══ */}
       <div className="welcome-roadmap" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -297,7 +305,7 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
           <button onClick={() => setViewingVideo(null)} className="btn btn-secondary btn-sm">{IC.arrowL} Retour</button>
           <div style={{ fontSize: 13, color: 'var(--text-sec)' }}>{chapter?.title} › <span style={{ color: 'var(--text)', fontWeight: 500 }}>{viewingVideo.title}</span></div>
         </div>
-        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>{viewingVideo.title}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>{viewingVideo.title}</h1>
         <p style={{ fontSize: 13, color: 'var(--text-sec)', marginBottom: 16 }}>Vidéo {idx + 1}/{allVids.length}{viewingVideo.duration_minutes > 0 ? ` · ${viewingVideo.duration_minutes} min` : ''}</p>
         {/* Player */}
         {embed?.type === 'youtube' ? <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16, position: 'relative', paddingBottom: '56.25%', background: '#000' }}><iframe src={`https://www.youtube.com/embed/${embed.id}?rel=0&modestbranding=1`} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} allowFullScreen /></div>
@@ -347,7 +355,7 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, padding: '18px 22px', background: 'linear-gradient(135deg, var(--accent-bg), #E0E7FF)', borderRadius: 14, border: '1px solid var(--accent-light)' }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, color: 'white', boxShadow: '0 4px 12px rgba(79,70,229,0.25)' }}>{section.emoji}</div>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{section.title}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{section.title}</div>
               <div style={{ fontSize: 13, color: 'var(--text-sec)', marginTop: 2 }}>{(section.chapters || []).length} chapitre{(section.chapters || []).length > 1 ? 's' : ''}</div>
             </div>
           </div>
@@ -362,7 +370,7 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
                     <div className={`checkbox ${chDone ? 'checked' : ''}`} onClick={e => { e.stopPropagation(); toggleChapterComplete(ch.id) }}>{chDone && IC.check}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: chDone ? 'var(--text-sec)' : 'var(--text)', textDecoration: chDone ? 'line-through' : 'none', lineHeight: 1.3 }}>{ch.title}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: chDone ? 'var(--text-sec)' : 'var(--text)', textDecoration: chDone ? 'line-through' : 'none', lineHeight: 1.3 }}>{ch.title}</div>
                       {vids.length > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                         <div style={{ width: 60 }}><ProgressBar value={doneVids} max={vids.length} height={4} /></div>
                         <span style={{ fontSize: 12, color: doneVids === vids.length && vids.length > 0 ? 'var(--success)' : 'var(--text-sec)', fontWeight: 600 }}>{doneVids}/{vids.length} vidéo{vids.length > 1 ? 's' : ''}</span>
@@ -388,7 +396,7 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
                           <div style={{ width: 32, height: 32, borderRadius: '50%', background: done ? 'rgba(5,150,105,0.1)' : 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: done ? 'var(--success)' : 'var(--accent)' }}>{IC.play}</div>
                           {/* Title */}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: done ? 'var(--success)' : 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.title}</div>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: done ? 'var(--success)' : 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.title}</div>
                           </div>
                           {/* Duration badge */}
                           {v.duration_minutes > 0 && <div style={{ padding: '3px 10px', borderRadius: 20, background: done ? 'rgba(5,150,105,0.15)' : 'var(--border)', fontSize: 11, fontWeight: 600, color: done ? 'var(--success)' : 'var(--text-sec)', flexShrink: 0 }}>{v.duration_minutes} min</div>}
@@ -408,6 +416,172 @@ function CourseView({ sections, completedVideos, completedChapters, toggleVideoC
           })}
         </div>
       ))}
+    </div>
+  )
+}
+
+
+// ═══ CONTACT PROF ═══
+function ContactProfPage({ userId, profs, userProfId }) {
+  const myProf = profs.find(p => p.id === userProfId)
+  if (!myProf) return (
+    <div style={{ textAlign: 'center', padding: 60 }}>
+      <div style={{ fontSize: 48, marginBottom: 12 }}>👨‍🏫</div>
+      <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Ton professeur</h2>
+      <p style={{ color: 'var(--text-sec)', fontSize: 15 }}>Aucun professeur ne t\'est encore attribué.</p>
+      <p style={{ color: 'var(--text-sec)', fontSize: 14, marginTop: 4 }}>Contacte l\'équipe Brevet Booster pour plus d\'infos.</p>
+    </div>
+  )
+  return (
+    <div style={{ maxWidth: 500, margin: '0 auto' }}>
+      <h1 className="page-title">Ton professeur</h1>
+      <p className="page-subtitle">Tu peux le contacter à tout moment</p>
+      <div className="card" style={{ padding: 32, textAlign: 'center' }}>
+        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 32, color: 'white', fontWeight: 800 }}>{myProf.first_name.charAt(0)}{myProf.last_name.charAt(0)}</div>
+        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>{myProf.first_name} {myProf.last_name}</div>
+        <div style={{ fontSize: 14, color: 'var(--text-sec)', marginBottom: 24 }}>Professeur de mathématiques</div>
+        {myProf.whatsapp_url && <a href={myProf.whatsapp_url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 28px', borderRadius: 14, background: '#25D366', color: 'white', fontSize: 16, fontWeight: 700, textDecoration: 'none' }}>💬 Contacter sur WhatsApp</a>}
+        {myProf.phone && !myProf.whatsapp_url && <a href={'tel:' + myProf.phone} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 28px', borderRadius: 14, background: 'var(--accent)', color: 'white', fontSize: 16, fontWeight: 700, textDecoration: 'none' }}>📞 Appeler</a>}
+      </div>
+    </div>
+  )
+}
+
+// ═══ PROGRESS PAGE (student) ═══
+function ProgressPage({ sections, completedChapters, completedVideos, xp }) {
+  const level = getLevel(xp)
+  const totalCh = sections.reduce((a, s) => a + (s.chapters || []).length, 0)
+  const totalVids = sections.flatMap(s => (s.chapters || []).flatMap(c => c.videos || [])).length
+  const doneCh = completedChapters.length
+  const doneVids = completedVideos.length
+  const pct = totalCh > 0 ? Math.round((doneCh / totalCh) * 100) : 0
+  const vidPct = totalVids > 0 ? Math.round((doneVids / totalVids) * 100) : 0
+  return (
+    <div>
+      <h1 className="page-title">Mes progrès</h1>
+      <p className="page-subtitle">Ton avancement dans la formation</p>
+      {/* Global stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+        <div className="card" style={{ padding: 20, textAlign: 'center' }}><div style={{ fontSize: 32, fontWeight: 900, fontFamily: 'monospace', color: 'var(--accent)' }}>{pct}%</div><div style={{ fontSize: 13, color: 'var(--text-sec)', marginTop: 4 }}>chapitres</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>{doneCh}/{totalCh}</div></div>
+        <div className="card" style={{ padding: 20, textAlign: 'center' }}><div style={{ fontSize: 32, fontWeight: 900, fontFamily: 'monospace', color: '#7C3AED' }}>{vidPct}%</div><div style={{ fontSize: 13, color: 'var(--text-sec)', marginTop: 4 }}>vidéos</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>{doneVids}/{totalVids}</div></div>
+        <div className="card" style={{ padding: 20, textAlign: 'center' }}><div style={{ fontSize: 28 }}>{level.emoji}</div><div style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent)', marginTop: 4 }}>{level.name}</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>{xp} XP</div></div>
+      </div>
+      {/* Per section progress */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-header">Progression par section</div>
+        {sections.map(sec => {
+          const chs = sec.chapters || []
+          const done = chs.filter(c => completedChapters.includes(c.id)).length
+          const secPct = chs.length > 0 ? Math.round((done / chs.length) * 100) : 0
+          return (
+            <div key={sec.id} style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>{sec.emoji} {sec.title}</span>
+                <span style={{ fontSize: 14, fontWeight: 800, fontFamily: 'monospace', color: secPct === 100 ? 'var(--success)' : 'var(--accent)' }}>{secPct}%</span>
+              </div>
+              <ProgressBar value={done} max={chs.length} height={6} />
+              <div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>{done}/{chs.length} chapitres terminés</div>
+            </div>
+          )
+        })}
+      </div>
+      {/* Chapter detail */}
+      <div className="card">
+        <div className="card-header">Tous les chapitres</div>
+        {sections.flatMap(s => (s.chapters || []).map(ch => {
+          const vids = ch.videos || []
+          const doneV = vids.filter(v => completedVideos.includes(v.id)).length
+          const chDone = completedChapters.includes(ch.id)
+          return (
+            <div key={ch.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {chDone ? <div style={{ width: 22, height: 22, borderRadius: 6, background: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></div> : <div style={{ width: 22, height: 22, borderRadius: 6, border: '2px solid var(--border)' }} />}
+                <span style={{ fontSize: 14, fontWeight: 600, color: chDone ? 'var(--success)' : 'var(--text)' }}>{ch.title}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {vids.length > 0 && <span style={{ fontSize: 12, color: 'var(--text-sec)' }}>{doneV}/{vids.length} vidéos</span>}
+                {chDone && <span className="badge badge-success">Terminé</span>}
+              </div>
+            </div>
+          )
+        }))}
+      </div>
+    </div>
+  )
+}
+
+
+// ═══ ADMIN PROFS ═══
+function AdminProfs({ profs, students, reload, showToast }) {
+  const [modal, setModal] = useState(false)
+  const [f, setF] = useState({ first_name: '', last_name: '', phone: '', whatsapp_url: '' })
+  const [assignModal, setAssignModal] = useState(null)
+  const [selProf, setSelProf] = useState('')
+
+  const addProf = async () => {
+    if (!f.first_name) return
+    await supabase.from('profs').insert({ ...f, active: true })
+    setModal(false); setF({ first_name: '', last_name: '', phone: '', whatsapp_url: '' }); showToast('Prof ajouté !'); reload()
+  }
+  const delProf = async id => { await supabase.from('profs').delete().eq('id', id); showToast('Supprimé'); reload() }
+  const assignProf = async (studentId) => {
+    await supabase.from('users').update({ prof_id: selProf || null }).eq('id', studentId)
+    setAssignModal(null); setSelProf(''); showToast('Prof assigné !'); reload()
+  }
+
+  return (
+    <div>
+      <h1 className="page-title">Professeurs</h1>
+      <p className="page-subtitle">Gère tes profs et assigne-les aux élèves</p>
+      <button className="btn btn-primary" onClick={() => setModal(true)} style={{ marginBottom: 20 }}>{IC.plus} Ajouter un prof</button>
+
+      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>Profs ({profs.length})</h2>
+      <div className="card" style={{ marginBottom: 24 }}>
+        {profs.map(p => (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: 14 }}>{p.first_name.charAt(0)}</div>
+              <div><span style={{ fontWeight: 600, fontSize: 15 }}>{p.first_name} {p.last_name}</span>{p.phone && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-sec)' }}>{p.phone}</span>}</div>
+            </div>
+            <button onClick={() => delProf(p.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-sec)' }}>{IC.trash}</button>
+          </div>
+        ))}
+        {profs.length === 0 && <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-sec)' }}>Aucun prof</div>}
+      </div>
+
+      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>Assignation élèves → profs</h2>
+      <div className="card">
+        {students.map(s => {
+          const assignedProf = profs.find(p => p.id === s.prof_id)
+          return (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 8 }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{s.first_name} {s.last_name}</span>
+              <div className="row gap-sm">
+                {assignedProf ? <span className="badge badge-success">{assignedProf.first_name}</span> : <span className="badge" style={{ background: 'var(--bg)', color: 'var(--text-sec)' }}>Non assigné</span>}
+                <button className="btn btn-secondary btn-sm" onClick={() => { setAssignModal(s); setSelProf(s.prof_id || '') }}>Changer</button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {modal && <Modal title="Nouveau professeur" onClose={() => setModal(false)}>
+        <div className="form-group"><label className="form-label">Prénom *</label><input className="form-input" value={f.first_name} onChange={e => setF({...f, first_name: e.target.value})} placeholder="Mohamed" autoFocus /></div>
+        <div className="form-group"><label className="form-label">Nom</label><input className="form-input" value={f.last_name} onChange={e => setF({...f, last_name: e.target.value})} placeholder="B." /></div>
+        <div className="form-group"><label className="form-label">Téléphone</label><input className="form-input" value={f.phone} onChange={e => setF({...f, phone: e.target.value})} placeholder="06 XX XX XX XX" /></div>
+        <div className="form-group"><label className="form-label">Lien WhatsApp</label><input className="form-input" value={f.whatsapp_url} onChange={e => setF({...f, whatsapp_url: e.target.value})} placeholder="https://wa.me/33612345678" /></div>
+        <div className="modal-actions"><button className="btn btn-secondary btn-sm" onClick={() => setModal(false)}>Annuler</button><button className="btn btn-primary btn-sm" onClick={addProf}>Créer</button></div>
+      </Modal>}
+
+      {assignModal && <Modal title={'Assigner un prof à ' + assignModal.first_name} onClose={() => setAssignModal(null)}>
+        <div className="form-group"><label className="form-label">Professeur</label>
+          <select className="form-input" value={selProf} onChange={e => setSelProf(e.target.value)} style={{ padding: '10px 14px' }}>
+            <option value="">— Aucun —</option>
+            {profs.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
+          </select>
+        </div>
+        <div className="modal-actions"><button className="btn btn-secondary btn-sm" onClick={() => setAssignModal(null)}>Annuler</button><button className="btn btn-primary btn-sm" onClick={() => assignProf(assignModal.id)}>Enregistrer</button></div>
+      </Modal>}
     </div>
   )
 }
@@ -725,7 +899,7 @@ function AdminAssignments({ students }) {
 // ═══ MAIN APP ═══
 export default function Home() {
   const [user, setUser] = useState(null); const [page, setPage] = useState('welcome'); const [toast, setToast] = useState(null); const [loading, setLoading] = useState(true); const [mobileOpen, setMobileOpen] = useState(false)
-  const [students, setStudents] = useState([]); const [allSections, setAllSections] = useState([]); const [videos, setVideos] = useState([]); const [settings, setSettings] = useState({}); const [completedVideos, setCompletedVideos] = useState([]); const [completedChapters, setCompletedChapters] = useState([]); const [streak, setStreak] = useState({}); const [xp, setXp] = useState(0); const [xpPopup, setXpPopup] = useState(null); const [weeklyVideos, setWeeklyVideos] = useState(0); const [lastVideo, setLastVideo] = useState(null); const [showCert, setShowCert] = useState(false)
+  const [students, setStudents] = useState([]); const [profs, setProfs] = useState([]); const [allSections, setAllSections] = useState([]); const [videos, setVideos] = useState([]); const [settings, setSettings] = useState({}); const [completedVideos, setCompletedVideos] = useState([]); const [completedChapters, setCompletedChapters] = useState([]); const [streak, setStreak] = useState({}); const [xp, setXp] = useState(0); const [xpPopup, setXpPopup] = useState(null); const [weeklyVideos, setWeeklyVideos] = useState(0); const [lastVideo, setLastVideo] = useState(null); const [showCert, setShowCert] = useState(false)
   const showToast = useCallback(m => { setToast(m); setTimeout(() => setToast(null), 2500) }, [])
   const formSections = useMemo(() => allSections.filter(s => s.type === 'formation'), [allSections])
   const prepSections = useMemo(() => allSections.filter(s => s.type === 'prep'), [allSections])
@@ -738,8 +912,8 @@ export default function Home() {
   }, [])
 
   const loadData = useCallback(async () => {
-    const [stuR, secR, chR, vidR, setR] = await Promise.all([supabase.from('users').select('*').eq('role', 'student').order('created_at'), supabase.from('sections').select('*').order('sort_order'), supabase.from('chapters').select('*').order('sort_order'), supabase.from('videos').select('*').order('sort_order'), supabase.from('settings').select('*')])
-    setStudents(stuR.data || []); setVideos(vidR.data || [])
+    const [stuR, secR, chR, vidR, setR, profR] = await Promise.all([supabase.from('users').select('*').eq('role', 'student').order('created_at'), supabase.from('sections').select('*').order('sort_order'), supabase.from('chapters').select('*').order('sort_order'), supabase.from('videos').select('*').order('sort_order'), supabase.from('settings').select('*'), supabase.from('profs').select('*').order('created_at')])
+    setStudents(stuR.data || []); setVideos(vidR.data || []); setProfs(profR.data || [])
     const allCh = chR.data || []; const allVid = vidR.data || []
     const chWithVid = allCh.map(c => ({ ...c, videos: allVid.filter(v => v.chapter_id === c.id) }))
     const secWithAll = (secR.data || []).map(s => ({ ...s, chapters: chWithVid.filter(c => c.section_id === s.id) }))
@@ -796,8 +970,8 @@ export default function Home() {
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-sec)' }}>Chargement...</div>
   if (!user) return <LoginPage onLogin={login} />
   const isAdmin = user.role === 'admin'
-  const studentNav = [{ id: 'welcome', label: 'Accueil', icon: IC.home }, { id: 'chapters', label: 'Formation', icon: IC.book }, { id: 'games', label: 'Entraînement', icon: IC.game }]
-  const adminNav = [{ id: 'admin-dash', label: 'Dashboard', icon: IC.dash }, { id: 'admin-students', label: 'Élèves', icon: IC.users }, { id: 'admin-formation', label: 'Contenu', icon: IC.book }, { id: 'admin-progress', label: 'Progression', icon: IC.chart }]
+  const studentNav = [{ id: 'welcome', label: 'Accueil', icon: IC.home }, { id: 'chapters', label: 'Formation', icon: IC.book }, { id: 'progress', label: 'Progrès', icon: IC.chart }, { id: 'contact-prof', label: 'Mon prof', icon: IC.users }, { id: 'games', label: 'Entraînement', icon: IC.game }]
+  const adminNav = [{ id: 'admin-dash', label: 'Dashboard', icon: IC.dash }, { id: 'admin-students', label: 'Élèves', icon: IC.users }, { id: 'admin-formation', label: 'Contenu', icon: IC.book }, { id: 'admin-profs', label: 'Professeurs', icon: IC.users }, { id: 'admin-progress', label: 'Progression', icon: IC.chart }]
 
   return (
     <div className="app-layout">
@@ -806,9 +980,12 @@ export default function Home() {
         {!isAdmin && page === 'welcome' && <WelcomePage completedChapters={completedChapters} totalChapters={totalChapters} completedVideos={completedVideos.length} totalVideos={totalVideos} streak={streak} xp={xp} sections={formSections} onNavigate={setPage} onContinue={handleContinue} allSections={allSections} userName={user.first_name} />}
         {!isAdmin && page === 'chapters' && <CourseView sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} toggleVideoComplete={toggleVideoComplete} toggleChapterComplete={toggleChapterComplete} trackPdf={trackPdf} earnXP={earnXP} userId={user.id} title="Formation" subtitle={`${totalChapters} chapitres · ${totalVideos} vidéos`} />}
         {!isAdmin && page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
+        {!isAdmin && page === 'progress' && <ProgressPage sections={formSections} completedChapters={completedChapters} completedVideos={completedVideos} xp={xp} />}
+        {!isAdmin && page === 'contact-prof' && <ContactProfPage userId={user.id} profs={profs} userProfId={user.prof_id} />}
         {isAdmin && page === 'admin-dash' && <AdminDash students={students} sections={allSections} videos={videos} />}
         {isAdmin && page === 'admin-students' && <AdminStudents students={students} reload={loadData} showToast={showToast} />}
         {isAdmin && page === 'admin-formation' && <AdminContent sections={allSections} reload={loadData} showToast={showToast} contentType="formation" />}
+        {isAdmin && page === 'admin-profs' && <AdminProfs profs={profs} students={students} reload={loadData} showToast={showToast} />}
         {isAdmin && page === 'admin-progress' && <AdminProgress students={students} sections={allSections} />}
       </div>
       {toast && <Toast message={toast} />}
