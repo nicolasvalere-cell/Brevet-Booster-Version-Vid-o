@@ -98,7 +98,7 @@ function CourseSidebar({ sections, completedVideos, completedChapters, currentPa
         </div>
 
         {/* Section label */}
-        <div style={{ padding: '12px 20px 6px', fontSize: 11, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: 0.8 }}>Chapitres</div>
+        <div onClick={() => { setPage('chapters'); setMobileOpen(false) }} style={{ padding: '12px 20px 6px', fontSize: 11, fontWeight: 700, color: currentPage === 'chapters' ? 'var(--blue)' : 'var(--text-light)', textTransform: 'uppercase', letterSpacing: 0.8, cursor: 'pointer', transition: 'color 0.15s' }}>📖 Chapitres</div>
 
         {/* Tree */}
         <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
@@ -261,22 +261,168 @@ function PdfViewer({ url, title, onBack }) {
   return <div><div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}><button onClick={onBack} className="btn btn-secondary btn-sm">{IC.arrowL} Retour</button><div style={{ fontSize: 16, fontWeight: 700 }}>{title}</div><a href={url} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }}>↗ Nouvel onglet</a></div><div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)', background: '#525659' }}><iframe src={`${url}#toolbar=1`} style={{ width: '100%', height: 'calc(100vh - 180px)', minHeight: 400, border: 'none' }} /></div></div>
 }
 
-// ═══ PROGRESS ═══
-function ProgressPage({ sections, completedChapters, completedVideos, xp }) {
-  const level = getLevel(xp)
-  const totalCh = sections.reduce((a, s) => a + (s.chapters || []).length, 0)
+// ═══ CHAPTERS PAGE ═══
+function ChaptersPage({ sections, completedVideos, completedChapters, toggleChapterComplete, onSelectVideo, trackPdf, earnXP, userId }) {
+  const [openChapters, setOpenChapters] = useState(new Set())
+  const [viewingPdf, setViewingPdf] = useState(null)
+  const toggleCh = id => setOpenChapters(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const openPdf = (url, t, type) => { trackPdf(type, t); setViewingPdf({ url, title: t }) }
+  if (viewingPdf) return <PdfViewer url={viewingPdf.url} title={viewingPdf.title} onBack={() => setViewingPdf(null)} />
   const totalVids = sections.flatMap(s => (s.chapters || []).flatMap(c => c.videos || [])).length
   return (
-    <div><h1 className="page-title">Mes progrès</h1><p className="page-subtitle">Ton avancement dans la formation</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
-        <div className="card" style={{ padding: 20, textAlign: 'center' }}><div style={{ fontSize: 32, fontWeight: 800, fontFamily: 'monospace', color: 'var(--blue)' }}>{totalCh > 0 ? Math.round((completedChapters.length / totalCh) * 100) : 0}%</div><div style={{ fontSize: 13, color: 'var(--text-sec)', marginTop: 4 }}>chapitres</div></div>
-        <div className="card" style={{ padding: 20, textAlign: 'center' }}><div style={{ fontSize: 32, fontWeight: 800, fontFamily: 'monospace', color: '#7C3AED' }}>{totalVids > 0 ? Math.round((completedVideos.length / totalVids) * 100) : 0}%</div><div style={{ fontSize: 13, color: 'var(--text-sec)', marginTop: 4 }}>vidéos</div></div>
-        <div className="card" style={{ padding: 20, textAlign: 'center' }}><div style={{ fontSize: 28 }}>{level.emoji}</div><div style={{ fontSize: 15, fontWeight: 700, color: 'var(--blue)', marginTop: 4 }}>{level.name}</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>{xp} XP</div></div>
-      </div>
-      <div className="card"><div className="card-header">Progression par section</div>{sections.map(sec => { const chs = sec.chapters || []; const done = chs.filter(c => completedChapters.includes(c.id)).length; const p = chs.length > 0 ? Math.round((done / chs.length) * 100) : 0; return <div key={sec.id} style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 15, fontWeight: 600 }}>{sec.emoji} {sec.title}</span><span style={{ fontSize: 14, fontWeight: 800, fontFamily: 'monospace', color: p === 100 ? 'var(--green)' : 'var(--blue)' }}>{p}%</span></div><ProgressBar value={done} max={chs.length} height={6} /><div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>{done}/{chs.length} chapitres</div></div> })}</div>
+    <div>
+      <h1 className="page-title">Chapitres</h1>
+      <p className="page-subtitle">{sections.reduce((a, s) => a + (s.chapters?.length || 0), 0)} chapitres · {totalVids} vidéos</p>
+      {sections.map(sec => (
+        <div key={sec.id} style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, padding: '18px 22px', background: 'linear-gradient(135deg, var(--blue-bg), #DBEAFE)', borderRadius: 14, border: '1px solid var(--blue-light)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, var(--blue), var(--blue-dark))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'white', boxShadow: '0 4px 12px rgba(37,99,235,0.25)', flexShrink: 0 }}>{sec.emoji}</div>
+            <div><div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>{sec.title}</div><div style={{ fontSize: 13, color: 'var(--text-sec)', marginTop: 2 }}>{(sec.chapters || []).length} chapitre{(sec.chapters || []).length > 1 ? 's' : ''}</div></div>
+          </div>
+          {(sec.chapters || []).map(ch => {
+            const vids = ch.videos || []; const isOpen = openChapters.has(ch.id)
+            const doneVids = vids.filter(v => completedVideos.includes(v.id)).length
+            const chDone = completedChapters.includes(ch.id)
+            return (
+              <div key={ch.id} style={{ marginBottom: 10, background: 'var(--card)', border: isOpen ? '1.5px solid var(--blue-light)' : '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+                <div onClick={() => toggleCh(ch.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                    <div className={`checkbox ${chDone ? 'checked' : ''}`} onClick={e => { e.stopPropagation(); toggleChapterComplete(ch.id) }}>{chDone && IC.check}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: chDone ? 'var(--green)' : 'var(--text)', textDecoration: chDone ? 'line-through' : 'none', lineHeight: 1.3 }}>{ch.title}</div>
+                      {vids.length > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}><div style={{ width: 60 }}><ProgressBar value={doneVids} max={vids.length} height={4} /></div><span style={{ fontSize: 12, color: doneVids === vids.length ? 'var(--green)' : 'var(--text-sec)', fontWeight: 600 }}>{doneVids}/{vids.length} vidéo{vids.length > 1 ? 's' : ''}</span></div>}
+                    </div>
+                  </div>
+                  <div style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-sec)' }}>{IC.chevD}</div>
+                </div>
+                {isOpen && <div style={{ borderTop: '1px solid var(--border)' }}>
+                  <div style={{ padding: '12px 16px 8px' }}>
+                    {vids.length > 0 ? vids.map((v, vi) => {
+                      const done = completedVideos.includes(v.id)
+                      return <div key={v.id} onClick={() => onSelectVideo(v, ch)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 6, borderRadius: 10, background: done ? 'var(--green-bg)' : 'var(--bg)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                        {done ? <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></div> : <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--blue-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--blue)', fontSize: 12, fontWeight: 800, fontFamily: 'monospace' }}>{vi + 1}</div>}
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: done ? 'rgba(5,150,105,0.1)' : 'var(--blue-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: done ? 'var(--green)' : 'var(--blue)' }}>{IC.play}</div>
+                        <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: done ? 'var(--green)' : 'var(--text)' }}>{v.title}</span>
+                        {v.duration_minutes > 0 && <div style={{ padding: '3px 10px', borderRadius: 20, background: done ? 'rgba(5,150,105,0.15)' : 'var(--border)', fontSize: 11, fontWeight: 600, color: done ? 'var(--green)' : 'var(--text-sec)' }}>{v.duration_minutes} min</div>}
+                      </div>
+                    }) : <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-sec)' }}>Aucune vidéo</div>}
+                  </div>
+                  <div className="chapter-pdf-grid" style={{ padding: '8px 16px 14px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                    {[['📘', 'Cours', ch.pdf_url, 'cours', 'var(--blue-bg)', 'var(--blue)', 'var(--blue-light)'], ['✏️', 'Exercices', ch.exercises_pdf_url, 'exercices', 'var(--red-bg)', 'var(--red)', 'var(--red-light)'], ['📝', 'Auto-éval', ch.eval_pdf_url, 'auto-eval', 'var(--gold-bg)', '#92400E', 'var(--gold-light)']].map(([icon, label, url, type, bg, color, border]) => (
+                      <button key={type} onClick={() => url && openPdf(url, ch.title, type)} disabled={!url} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 8px', borderRadius: 10, border: `1.5px solid ${url ? border : 'var(--border)'}`, background: url ? bg : 'var(--bg)', color: url ? color : 'var(--text-sec)', fontSize: 14, fontWeight: 700, cursor: url ? 'pointer' : 'default', fontFamily: 'inherit', opacity: url ? 1 : 0.35 }}>{icon} {label}</button>
+                    ))}
+                  </div>
+                </div>}
+              </div>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }
+
+
+// ═══ PROGRESS PAGE (motivational for teens) ═══
+function ProgressPage({ sections, completedChapters, completedVideos, xp, streak, totalTime }) {
+  const level = getLevel(xp)
+  const totalCh = sections.reduce((a, s) => a + (s.chapters || []).length, 0)
+  const totalVids = sections.flatMap(s => (s.chapters || []).flatMap(c => c.videos || [])).length
+  const doneCh = completedChapters.length; const doneVids = completedVideos.length
+  const pct = totalCh > 0 ? Math.round((doneCh / totalCh) * 100) : 0
+  const vidPct = totalVids > 0 ? Math.round((doneVids / totalVids) * 100) : 0
+  const fmtTime = s => { if (!s) return '0m'; const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h${m > 0 ? m + 'm' : ''}` : `${m}m` }
+  const pctStroke = 251 - (251 * pct / 100)
+
+  // Milestones
+  const milestones = [
+    { id: 'm1', emoji: '🎬', label: 'Première vidéo', desc: 'Regarde ta première vidéo', done: doneVids >= 1 },
+    { id: 'm2', emoji: '📚', label: 'Premier chapitre', desc: 'Termine un chapitre entier', done: doneCh >= 1 },
+    { id: 'm3', emoji: '🔥', label: 'Streak de 3 jours', desc: 'Connecte-toi 3 jours de suite', done: (streak.best_streak || 0) >= 3 },
+    { id: 'm4', emoji: '🎯', label: '5 vidéos', desc: 'Regarde 5 vidéos', done: doneVids >= 5 },
+    { id: 'm5', emoji: '⏱️', label: '1 heure de cours', desc: 'Passe 1h sur la plateforme', done: totalTime >= 3600 },
+    { id: 'm6', emoji: '💪', label: '10 vidéos', desc: 'Regarde 10 vidéos', done: doneVids >= 10 },
+    { id: 'm7', emoji: '🏅', label: '5 chapitres', desc: 'Termine 5 chapitres', done: doneCh >= 5 },
+    { id: 'm8', emoji: '🔥', label: 'Streak de 7 jours', desc: '7 jours de suite !', done: (streak.best_streak || 0) >= 7 },
+    { id: 'm9', emoji: '⚡', label: '1000 XP', desc: 'Atteins 1000 XP', done: xp >= 1000 },
+    { id: 'm10', emoji: '🏆', label: 'Halfway', desc: 'Termine 50% de la formation', done: pct >= 50 },
+    { id: 'm11', emoji: '⏱️', label: '5 heures', desc: '5h passées sur la plateforme', done: totalTime >= 18000 },
+    { id: 'm12', emoji: '🎓', label: 'Formation complète', desc: 'Termine 100% de la formation', done: pct >= 100 },
+  ]
+  const unlockedCount = milestones.filter(m => m.done).length
+
+  return (
+    <div>
+      <h1 className="page-title">Mes progrès</h1>
+      <p className="page-subtitle">Ton avancement et tes records</p>
+
+      {/* Top section: circle + key stats */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div className="card" style={{ flex: 1, minWidth: 200, padding: 24, textAlign: 'center' }}>
+          <svg width="110" height="110" viewBox="0 0 110 110" style={{ marginBottom: 8 }}>
+            <circle cx="55" cy="55" r="40" fill="none" stroke="var(--border)" strokeWidth="7"/>
+            <circle cx="55" cy="55" r="40" fill="none" stroke="var(--blue)" strokeWidth="7" strokeDasharray="251" strokeDashoffset={pctStroke} strokeLinecap="round" transform="rotate(-90 55 55)" style={{ transition: 'stroke-dashoffset 1s ease' }}/>
+            <text x="55" y="52" textAnchor="middle" fontSize="26" fontWeight="800" fontFamily="monospace" fill="var(--text)">{pct}%</text>
+            <text x="55" y="68" textAnchor="middle" fontSize="11" fill="var(--text-sec)">chapitres</text>
+          </svg>
+          <div style={{ fontSize: 14, color: 'var(--text-sec)' }}>{doneCh}/{totalCh} chapitres · {doneVids}/{totalVids} vidéos</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ fontSize: 22 }}>🔥</span><div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Streak</div><div style={{ fontSize: 18, fontWeight: 800, color: 'var(--gold)' }}>{streak.current_streak || 0} jour{(streak.current_streak || 0) > 1 ? 's' : ''}</div></div></div>
+            <div style={{ textAlign: 'right' }}><div style={{ fontSize: 11, color: 'var(--text-light)' }}>Record</div><div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'monospace' }}>{streak.best_streak || 0}j</div></div>
+          </div>
+          <div className="card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ fontSize: 22 }}>⏱️</span><div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Temps total</div><div style={{ fontSize: 18, fontWeight: 800 }}>{fmtTime(totalTime)}</div></div></div>
+            <div style={{ textAlign: 'right' }}><div style={{ fontSize: 11, color: 'var(--text-light)' }}>Connexions</div><div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'monospace' }}>{streak.total_logins || 0}</div></div>
+          </div>
+          <div className="card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>{level.emoji}</span>
+            <div style={{ flex: 1 }}><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>Niveau {level.level}</div><div style={{ fontSize: 18, fontWeight: 800, color: 'var(--blue)' }}>{level.name}</div></div>
+            <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: '#7C3AED' }}>{xp} XP</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Milestones */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header">
+          <span>🏆 Objectifs ({unlockedCount}/{milestones.length})</span>
+          <ProgressBar value={unlockedCount} max={milestones.length} height={6} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 0 }}>
+          {milestones.map(m => (
+            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: '1px solid var(--border)', opacity: m.done ? 1 : 0.5 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: m.done ? 'var(--gold-bg)' : 'var(--bg)', border: m.done ? '1.5px solid var(--gold-light)' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{m.done ? m.emoji : '🔒'}</div>
+              <div><div style={{ fontSize: 14, fontWeight: 700, color: m.done ? 'var(--text)' : 'var(--text-sec)' }}>{m.label}</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>{m.desc}</div></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Progress by section */}
+      <div className="card">
+        <div className="card-header">📊 Par section</div>
+        {sections.map(sec => {
+          const chs = sec.chapters || []
+          const done = chs.filter(c => completedChapters.includes(c.id)).length
+          const p = chs.length > 0 ? Math.round((done / chs.length) * 100) : 0
+          return (
+            <div key={sec.id} style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>{sec.emoji} {sec.title}</span>
+                <span style={{ fontSize: 14, fontWeight: 800, fontFamily: 'monospace', color: p === 100 ? 'var(--green)' : 'var(--blue)' }}>{p}%</span>
+              </div>
+              <ProgressBar value={done} max={chs.length} height={6} />
+              <div style={{ fontSize: 12, color: 'var(--text-sec)', marginTop: 4 }}>{done}/{chs.length} chapitres</div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 
 // ═══ GAMES ═══
 function GameTimer({ tl }) { return <div style={{ width: '100%', background: 'var(--border)', borderRadius: 20, height: 10, overflow: 'hidden' }}><div style={{ width: `${(tl / 60) * 100}%`, height: '100%', background: tl > 20 ? 'var(--green)' : tl > 10 ? 'var(--gold)' : 'var(--red)', borderRadius: 20, transition: 'width 1s linear' }} /></div> }
@@ -423,7 +569,29 @@ export default function Home() {
 
   const login = async (username, password, setErr) => { const { data, error } = await supabase.from('users').select('*').eq('username', username).eq('password', password).single(); if (error || !data) { setErr('Identifiant ou mot de passe incorrect'); return }; if (!data.active && data.role !== 'admin') { setErr('Compte désactivé'); return }; setUser(data); if (data.role === 'admin') setPage('admin-dash'); else { setPage('welcome'); await loadStudentData(data.id); await updateStreak(data.id) } }
 
-  const toggleVideoComplete = async videoId => { if (!user) return; if (completedVideos.includes(videoId)) { await supabase.from('video_progress').delete().eq('user_id', user.id).eq('video_id', videoId); setCompletedVideos(p => p.filter(id => id !== videoId)) } else { await supabase.from('video_progress').upsert({ user_id: user.id, video_id: videoId, completed: true }); setCompletedVideos(p => [...p, videoId]); await earnXP(user.id, 'watch_video') } }
+  const toggleVideoComplete = async videoId => {
+    if (!user) return
+    if (completedVideos.includes(videoId)) {
+      await supabase.from('video_progress').delete().eq('user_id', user.id).eq('video_id', videoId)
+      setCompletedVideos(p => p.filter(id => id !== videoId))
+    } else {
+      await supabase.from('video_progress').upsert({ user_id: user.id, video_id: videoId, completed: true })
+      const newCompleted = [...completedVideos, videoId]
+      setCompletedVideos(newCompleted)
+      await earnXP(user.id, 'watch_video')
+      // Auto-complete chapter if all videos watched
+      const ch = formSections.flatMap(s => s.chapters || []).find(c => (c.videos || []).some(v => v.id === videoId))
+      if (ch) {
+        const allVidsInCh = (ch.videos || []).map(v => v.id)
+        const allDone = allVidsInCh.every(vid => newCompleted.includes(vid))
+        if (allDone && !completedChapters.includes(ch.id)) {
+          await supabase.from('chapter_progress').upsert({ user_id: user.id, chapter_id: ch.id, completed: true })
+          setCompletedChapters(p => [...p, ch.id])
+          await earnXP(user.id, 'complete_chapter')
+        }
+      }
+    }
+  }
   const toggleChapterComplete = async chapterId => { if (!user) return; if (completedChapters.includes(chapterId)) { await supabase.from('chapter_progress').delete().eq('user_id', user.id).eq('chapter_id', chapterId); setCompletedChapters(p => p.filter(id => id !== chapterId)) } else { await supabase.from('chapter_progress').upsert({ user_id: user.id, chapter_id: chapterId, completed: true }); setCompletedChapters(p => [...p, chapterId]); await earnXP(user.id, 'complete_chapter') } }
   const trackPdf = async (type, title) => { if (!user) return; try { await supabase.from('pdf_clicks').insert({ user_id: user.id, pdf_type: type, chapter_title: title }) } catch {}; await earnXP(user.id, 'open_pdf') }
   const logout = () => { setUser(null); setPage('welcome'); setCompletedVideos([]); setCompletedChapters([]); setStreak({}); setXp(0); setSelectedVideo(null); setSelectedChapter(null); setViewingPdf(null) }
@@ -462,7 +630,8 @@ export default function Home() {
         {page === 'welcome' && <WelcomePage completedChapters={completedChapters} totalChapters={totalChapters} completedVideos={completedVideos.length} totalVideos={totalVideos} streak={streak} xp={xp} sections={formSections} onContinue={handleContinue} userName={user.first_name} totalTime={totalTime} />}
         {page === 'video' && selectedVideo && <VideoPlayer video={selectedVideo} chapter={selectedChapter} isDone={completedVideos.includes(selectedVideo.id)} onToggle={() => toggleVideoComplete(selectedVideo.id)} onNext={goNext} onPrev={goPrev} hasNext={vidIdx < allVidsFlat.length - 1} hasPrev={vidIdx > 0} allVids={selectedChapter?.videos || []} completedVideos={completedVideos} onSelectVideo={onSelectVideo} onOpenPdf={onOpenPdf} />}
         {page === 'pdf' && viewingPdf && <PdfViewer url={viewingPdf.url} title={viewingPdf.title} onBack={() => { setPage('video'); setViewingPdf(null) }} />}
-        {page === 'progress' && <ProgressPage sections={formSections} completedChapters={completedChapters} completedVideos={completedVideos} xp={xp} />}
+        {page === 'chapters' && <ChaptersPage sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} toggleChapterComplete={toggleChapterComplete} onSelectVideo={onSelectVideo} trackPdf={trackPdf} earnXP={earnXP} userId={user.id} />}
+        {page === 'progress' && <ProgressPage sections={formSections} completedChapters={completedChapters} completedVideos={completedVideos} xp={xp} streak={streak} totalTime={totalTime} />}
         {page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
       </div>
       {toast && <Toast message={toast} />}
