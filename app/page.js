@@ -79,72 +79,99 @@ function CourseSidebar({ sections, completedVideos, completedChapters, currentPa
   const [openChapters, setOpenChapters] = useState(new Set())
   const toggleSec = id => setOpenSections(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
   const toggleCh = id => setOpenChapters(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const navStyle = (active) => ({ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', margin: '2px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: active ? 600 : 500, color: active ? 'var(--blue)' : 'var(--text-sec)', background: active ? 'var(--blue-bg)' : 'transparent', transition: 'all 0.15s' })
   return (
     <>
       <div className="mobile-topbar"><div onClick={() => setMobileOpen(true)} style={{ cursor: 'pointer', padding: 4 }}>{IC.menu}</div><span style={{ fontSize: 16, fontWeight: 800 }}>Brevet <span style={{ color: 'var(--blue)' }}>Booster</span></span><div style={{ width: 26 }} /></div>
       {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
       <div className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-brand"><div className="sidebar-logo">B</div><span className="sidebar-title">Brevet <span>Booster</span></span><div className="sidebar-close" onClick={() => setMobileOpen(false)} style={{ marginLeft: 'auto', cursor: 'pointer', color: 'var(--text-sec)' }}>{IC.close}</div></div>
-        {/* Accueil */}
-        <div style={{ padding: '4px 0' }}>
-          <div className={`sidebar-nav-item ${currentPage === 'welcome' ? 'active' : ''}`} onClick={() => { setPage('welcome'); setMobileOpen(false) }}>{IC.home} <span>Accueil</span></div>
+        {/* Brand */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg, var(--blue), var(--blue-dark))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 14 }}>B</div>
+          <span style={{ fontSize: 16, fontWeight: 800 }}>Brevet <span style={{ color: 'var(--blue)' }}>Booster</span></span>
+          <div className="sidebar-close" onClick={() => setMobileOpen(false)} style={{ marginLeft: 'auto', cursor: 'pointer', color: 'var(--text-sec)' }}>{IC.close}</div>
         </div>
-        {/* Chapitres tree */}
-        <div className="sidebar-section-label">Chapitres</div>
-        <div className="sidebar-tree">
+
+        {/* Accueil */}
+        <div style={{ padding: '8px 0 4px' }}>
+          <div style={navStyle(currentPage === 'welcome')} onClick={() => { setPage('welcome'); setMobileOpen(false) }}>{IC.home} <span>Accueil</span></div>
+        </div>
+
+        {/* Section label */}
+        <div style={{ padding: '12px 20px 6px', fontSize: 11, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: 0.8 }}>Chapitres</div>
+
+        {/* Tree */}
+        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
           {sections.map(sec => {
             const isOpen = openSections.has(sec.id)
             const chs = sec.chapters || []
             const doneCh = chs.filter(c => completedChapters.includes(c.id)).length
+            const allDone = doneCh === chs.length && chs.length > 0
             return (
-              <div key={sec.id}>
-                <div className="sidebar-tree-section" onClick={() => toggleSec(sec.id)}>
-                  <span style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(0)' : 'rotate(-90deg)', display: 'flex' }}>{IC.chevD}</span>
-                  <span style={{ flex: 1 }}>{sec.title}</span>
-                  <span style={{ fontSize: 11, color: doneCh === chs.length && chs.length > 0 ? 'var(--green)' : 'var(--text-light)' }}>{doneCh}/{chs.length}</span>
+              <div key={sec.id} style={{ marginBottom: 2 }}>
+                {/* Section header */}
+                <div onClick={() => toggleSec(sec.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', margin: '2px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: allDone ? 'var(--green)' : 'var(--text)', transition: 'all 0.15s', background: isOpen ? 'var(--bg)' : 'transparent' }}>
+                  <span style={{ display: 'flex', transition: 'transform 0.2s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', color: 'var(--text-light)', flexShrink: 0 }}>{IC.chevR}</span>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{sec.emoji}</span>
+                  <span style={{ flex: 1, lineHeight: 1.3 }}>{sec.title}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: allDone ? 'var(--green-bg)' : 'var(--bg)', color: allDone ? 'var(--green)' : 'var(--text-light)', flexShrink: 0 }}>{doneCh}/{chs.length}</span>
                 </div>
-                {isOpen && chs.map(ch => {
-                  const chOpen = openChapters.has(ch.id)
-                  const vids = ch.videos || []
-                  const chDone = completedChapters.includes(ch.id)
-                  return (
-                    <div key={ch.id}>
-                      <div className="sidebar-tree-chapter" onClick={() => toggleCh(ch.id)}>
-                        <span style={{ transition: 'transform 0.2s', transform: chOpen ? 'rotate(0)' : 'rotate(-90deg)', display: 'flex', color: 'var(--text-light)' }}>{IC.chevD}</span>
-                        {chDone ? <span style={{ color: 'var(--green)' }}>{IC.check}</span> : <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid var(--border)', flexShrink: 0 }} />}
-                        <span style={{ flex: 1, color: chDone ? 'var(--green)' : 'var(--text)' }}>{ch.title}</span>
-                      </div>
-                      {chOpen && vids.map(v => {
-                        const vDone = completedVideos.includes(v.id)
-                        const active = selectedVideo?.id === v.id
-                        return <div key={v.id} className={`sidebar-tree-video ${active ? 'active' : ''} ${vDone && !active ? 'done' : ''}`} onClick={() => { onSelectVideo(v, ch); setMobileOpen(false) }}>
-                          {vDone && !active ? IC.check : active ? IC.play : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--border)', flexShrink: 0 }} />}
-                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</span>
-                          {v.duration_minutes > 0 && <span style={{ fontSize: 11, color: 'var(--text-light)', flexShrink: 0 }}>{v.duration_minutes}m</span>}
+                {/* Chapters */}
+                {isOpen && <div style={{ paddingLeft: 12 }}>
+                  {chs.map(ch => {
+                    const chOpen = openChapters.has(ch.id)
+                    const vids = ch.videos || []
+                    const chDone = completedChapters.includes(ch.id)
+                    const doneVids = vids.filter(v => completedVideos.includes(v.id)).length
+                    return (
+                      <div key={ch.id}>
+                        <div onClick={() => toggleCh(ch.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', margin: '1px 8px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: chDone ? 'var(--green)' : 'var(--text)', transition: 'all 0.15s' }}>
+                          <span style={{ display: 'flex', transition: 'transform 0.2s', transform: chOpen ? 'rotate(90deg)' : 'rotate(0deg)', color: 'var(--text-light)', flexShrink: 0 }}>{IC.chevR}</span>
+                          {chDone ? <div style={{ width: 18, height: 18, borderRadius: 5, background: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></div> : <div style={{ width: 18, height: 18, borderRadius: 5, border: '2px solid var(--border)', flexShrink: 0 }} />}
+                          <span style={{ flex: 1, lineHeight: 1.3 }}>{ch.title}</span>
+                          {vids.length > 0 && <span style={{ fontSize: 10, color: 'var(--text-light)', flexShrink: 0 }}>{doneVids}/{vids.length}</span>}
                         </div>
-                      })}
-                    </div>
-                  )
-                })}
+                        {/* Videos */}
+                        {chOpen && <div style={{ paddingLeft: 20 }}>
+                          {vids.map(v => {
+                            const vDone = completedVideos.includes(v.id)
+                            const active = selectedVideo?.id === v.id
+                            return <div key={v.id} onClick={() => { onSelectVideo(v, ch); setMobileOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', margin: '1px 8px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: active ? 600 : 400, color: active ? 'var(--blue)' : vDone ? 'var(--green)' : 'var(--text-sec)', background: active ? 'var(--blue-bg)' : 'transparent', transition: 'all 0.15s' }}>
+                              {active ? <span style={{ color: 'var(--blue)', flexShrink: 0 }}>{IC.play}</span> : vDone ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="3" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg> : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--border)', flexShrink: 0, marginLeft: 3, marginRight: 3 }} />}
+                              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</span>
+                              {v.duration_minutes > 0 && <span style={{ fontSize: 10, color: 'var(--text-light)', flexShrink: 0 }}>{v.duration_minutes}m</span>}
+                            </div>
+                          })}
+                        </div>}
+                      </div>
+                    )
+                  })}
+                </div>}
               </div>
             )
           })}
         </div>
-        {/* Other nav */}
-        <div style={{ borderTop: '1px solid var(--border)', padding: '4px 0' }}>
-          <div className={`sidebar-nav-item ${currentPage === 'progress' ? 'active' : ''}`} onClick={() => { setPage('progress'); setMobileOpen(false) }}>{IC.chart} <span>Progrès</span></div>
-          <div className={`sidebar-nav-item ${currentPage === 'games' ? 'active' : ''}`} onClick={() => { setPage('games'); setMobileOpen(false) }}>{IC.game} <span>Entraînement</span></div>
+
+        {/* Bottom nav */}
+        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0' }}>
+          <div style={navStyle(currentPage === 'progress')} onClick={() => { setPage('progress'); setMobileOpen(false) }}>{IC.chart} <span>Progrès</span></div>
+          <div style={navStyle(currentPage === 'games')} onClick={() => { setPage('games'); setMobileOpen(false) }}>{IC.game} <span>Entraînement</span></div>
         </div>
+
         {/* Contact prof */}
-        {myProf && <div className="sidebar-prof">
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Ton professeur</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--green-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--green)' }}>{myProf.first_name.charAt(0)}</div>
-            <div><div style={{ fontSize: 13, fontWeight: 600 }}>{myProf.first_name} {myProf.last_name}</div>
-            {myProf.whatsapp_url ? <a href={myProf.whatsapp_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--green)', textDecoration: 'none' }}>Contacter</a> : myProf.phone && <span style={{ fontSize: 11, color: 'var(--text-sec)' }}>{myProf.phone}</span>}</div>
+        {myProf && <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Ton professeur</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--green-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--green)', flexShrink: 0 }}>{myProf.first_name.charAt(0)}</div>
+            <div><div style={{ fontSize: 14, fontWeight: 600 }}>{myProf.first_name} {myProf.last_name}</div>
+            {myProf.whatsapp_url ? <a href={myProf.whatsapp_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--green)', textDecoration: 'none', fontWeight: 600 }}>💬 Contacter</a> : myProf.phone && <span style={{ fontSize: 12, color: 'var(--text-sec)' }}>{myProf.phone}</span>}</div>
           </div>
         </div>}
-        <div className="sidebar-bottom"><button className="sidebar-logout" onClick={onLogout}>{IC.logout}<span>Déconnexion</span></button></div>
+
+        {/* Logout */}
+        <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border)' }}>
+          <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sec)', fontSize: 13, fontFamily: 'var(--font)', padding: '8px 0' }}>{IC.logout} <span>Déconnexion</span></button>
+        </div>
       </div>
     </>
   )
