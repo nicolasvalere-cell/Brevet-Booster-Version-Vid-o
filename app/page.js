@@ -155,6 +155,8 @@ function CourseSidebar({ sections, completedVideos, completedChapters, currentPa
         {/* Bottom nav */}
         <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0' }}>
           <div style={navStyle(currentPage === 'progress')} onClick={() => { setPage('progress'); setMobileOpen(false) }}>{IC.chart} <span>Progrès</span></div>
+          <div style={navStyle(currentPage === 'flashcards')} onClick={() => { setPage('flashcards'); setMobileOpen(false) }}>{IC.book} <span>Flashcards</span></div>
+          <div style={navStyle(currentPage === 'exam')} onClick={() => { setPage('exam'); setMobileOpen(false) }}>{IC.target} <span>Examen blanc</span></div>
           <div style={navStyle(currentPage === 'games')} onClick={() => { setPage('games'); setMobileOpen(false) }}>{IC.game} <span>Entraînement</span></div>
         </div>
 
@@ -424,6 +426,114 @@ function ProgressPage({ sections, completedChapters, completedVideos, xp, streak
 }
 
 
+
+// ═══ FLASHCARDS ═══
+function FlashcardsPage({ userId }) {
+  const [cards, setCards] = useState([]); const [idx, setIdx] = useState(0); const [flipped, setFlipped] = useState(false); const [cats, setCats] = useState([]); const [filter, setFilter] = useState('all')
+  useEffect(() => { (async () => { const { data } = await supabase.from('flashcards').select('*').order('sort_order'); setCards(data || []); const c = [...new Set((data || []).map(d => d.category))]; setCats(c) })() }, [])
+  const filtered = filter === 'all' ? cards : cards.filter(c => c.category === filter)
+  const card = filtered[idx]
+  const next = () => { setFlipped(false); setIdx(i => Math.min(i + 1, filtered.length - 1)) }
+  const prev = () => { setFlipped(false); setIdx(i => Math.max(i - 1, 0)) }
+  if (!cards.length) return <div style={{ textAlign: 'center', padding: 60 }}><div style={{ fontSize: 48, marginBottom: 12 }}>📇</div><h2 style={{ fontSize: 22, fontWeight: 800 }}>Flashcards</h2><p style={{ color: 'var(--text-sec)', marginTop: 8 }}>Aucune flashcard disponible</p></div>
+  return (
+    <div style={{ maxWidth: 500, margin: '0 auto' }}>
+      <h1 className="page-title">Flashcards</h1>
+      <p className="page-subtitle">Clique sur la carte pour voir la reponse</p>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <button onClick={() => { setFilter('all'); setIdx(0); setFlipped(false) }} className={filter === 'all' ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}>Tout ({cards.length})</button>
+        {cats.map(c => <button key={c} onClick={() => { setFilter(c); setIdx(0); setFlipped(false) }} className={filter === c ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}>{c}</button>)}
+      </div>
+      {card && <>
+        <div onClick={() => setFlipped(!flipped)} style={{ minHeight: 220, background: flipped ? 'var(--indigo)' : 'var(--card)', border: flipped ? 'none' : '2px solid var(--border)', borderRadius: 20, padding: '32px 28px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', transition: 'all 0.3s', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: flipped ? 'rgba(255,255,255,0.5)' : 'var(--indigo)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>{flipped ? 'Reponse' : card.category}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: flipped ? 'white' : 'var(--text)', lineHeight: 1.4 }}>{flipped ? card.back : card.front}</div>
+          {!flipped && <div style={{ marginTop: 16, fontSize: 13, color: 'var(--text-light)' }}>Clique pour retourner</div>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+          <button onClick={prev} disabled={idx <= 0} className="btn btn-secondary" style={{ opacity: idx > 0 ? 1 : 0.3 }}>{IC.arrowL} Precedente</button>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-sec)' }}>{idx + 1} / {filtered.length}</span>
+          <button onClick={next} disabled={idx >= filtered.length - 1} className="btn btn-secondary" style={{ opacity: idx < filtered.length - 1 ? 1 : 0.3 }}>Suivante {IC.arrowR}</button>
+        </div>
+      </>}
+    </div>
+  )
+}
+
+
+// ═══ EXAMEN BLANC (QCM) ═══
+function ExamPage({ userId, earnXP }) {
+  const [exams, setExams] = useState([]); const [activeExam, setActiveExam] = useState(null); const [questions, setQuestions] = useState([]); const [qIdx, setQIdx] = useState(0); const [answers, setAnswers] = useState({}); const [submitted, setSubmitted] = useState(false); const [timer, setTimer] = useState(0); const [results, setResults] = useState([])
+  useEffect(() => { (async () => { const { data } = await supabase.from('quiz_questions').select('exam_name'); const names = [...new Set((data || []).map(d => d.exam_name))]; setExams(names); const { data: r } = await supabase.from('quiz_results').select('*').eq('user_id', userId).order('completed_at', { ascending: false }); setResults(r || []) })() }, [userId])
+  const startExam = async name => { const { data } = await supabase.from('quiz_questions').select('*').eq('exam_name', name).order('sort_order'); setQuestions(data || []); setActiveExam(name); setQIdx(0); setAnswers({}); setSubmitted(false); setTimer(0) }
+  useEffect(() => { if (!activeExam || submitted) return; const t = setInterval(() => setTimer(s => s + 1), 1000); return () => clearInterval(t) }, [activeExam, submitted])
+  const submit = async () => { setSubmitted(true); let score = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) score++ }); try { await supabase.from('quiz_results').insert({ user_id: userId, exam_name: activeExam, score, total: questions.length }); await earnXP(userId, 'game_played') } catch {} }
+  const fmtTimer = s => { const m = Math.floor(s / 60); const sec = s % 60; return m + ':' + String(sec).padStart(2, '0') }
+  const getBestScore = name => { const r = results.filter(x => x.exam_name === name); return r.length > 0 ? Math.max(...r.map(x => x.score)) : null }
+
+  if (!activeExam) return (
+    <div style={{ maxWidth: 500, margin: '0 auto' }}>
+      <h1 className="page-title">Examen blanc</h1>
+      <p className="page-subtitle">Teste-toi en conditions reelles</p>
+      {exams.map(name => { const best = getBestScore(name); const total = results.find(r => r.exam_name === name)?.total; return (
+        <div key={name} className="card" onClick={() => startExam(name)} style={{ padding: 24, cursor: 'pointer', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 18 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--indigo-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>📝</div>
+          <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 17 }}>{name}</div><div style={{ fontSize: 14, color: 'var(--text-sec)' }}>QCM auto-corrige</div></div>
+          {best !== null && <div style={{ padding: '6px 14px', borderRadius: 20, background: best / total >= 0.7 ? 'var(--green-bg)' : 'var(--orange-bg)', color: best / total >= 0.7 ? 'var(--green-dark)' : '#C2410C', fontSize: 14, fontWeight: 700 }}>Record : {best}/{total}</div>}
+        </div>
+      ) })}
+      {!exams.length && <div className="card" style={{ padding: 60, textAlign: 'center', color: 'var(--text-sec)' }}><div style={{ fontSize: 48, marginBottom: 12 }}>📝</div><p style={{ fontWeight: 700, fontSize: 16 }}>Aucun examen disponible</p></div>}
+    </div>
+  )
+
+  if (submitted) { let score = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) score++ }); const pct = Math.round((score / questions.length) * 100); return (
+    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', padding: '40px 0' }}>
+        <div style={{ fontSize: 56, marginBottom: 12 }}>{pct >= 70 ? '🎉' : pct >= 50 ? '💪' : '📚'}</div>
+        <div style={{ fontSize: 48, fontWeight: 900, color: pct >= 70 ? 'var(--green)' : pct >= 50 ? 'var(--orange)' : 'var(--red)' }}>{score}/{questions.length}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-sec)', marginTop: 4 }}>{pct}% — {pct >= 70 ? 'Excellent !' : pct >= 50 ? 'Pas mal, continue !' : 'Revise et recommence !'}</div>
+        <div style={{ fontSize: 14, color: 'var(--text-light)', marginTop: 8 }}>Temps : {fmtTimer(timer)}</div>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}><button className="btn btn-primary" onClick={() => startExam(activeExam)}>Recommencer</button><button className="btn btn-secondary" onClick={() => setActiveExam(null)}>Retour</button></div>
+      </div>
+      <div style={{ marginTop: 20 }}>{questions.map((q, i) => { const correct = answers[q.id] === q.correct_answer; const opts = [['a', q.option_a], ['b', q.option_b], ['c', q.option_c], ['d', q.option_d]]; return (
+        <div key={q.id} className="card" style={{ marginBottom: 10, padding: 20, borderColor: correct ? 'var(--green-light)' : 'var(--red-light)' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>{i + 1}. {q.question}</div>
+          {opts.map(([key, text]) => { const isCorrect = key === q.correct_answer; const isChosen = key === answers[q.id]; return <div key={key} style={{ padding: '8px 14px', marginBottom: 4, borderRadius: 10, fontSize: 14, background: isCorrect ? 'var(--green-bg)' : isChosen && !isCorrect ? 'var(--red-bg)' : 'var(--bg)', color: isCorrect ? 'var(--green-dark)' : isChosen && !isCorrect ? 'var(--red)' : 'var(--text)', fontWeight: isCorrect || isChosen ? 700 : 400 }}>{isCorrect ? '✅' : isChosen ? '❌' : '○'} {text}</div> })}
+          {q.explanation && <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 10, background: 'var(--indigo-bg)', fontSize: 13, color: 'var(--indigo-dark)' }}>💡 {q.explanation}</div>}
+        </div>
+      ) })}</div>
+    </div>
+  ) }
+
+  const q = questions[qIdx]; if (!q) return null
+  const opts = [['a', q.option_a], ['b', q.option_b], ['c', q.option_c], ['d', q.option_d]]
+  return (
+    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <button className="btn btn-secondary btn-sm" onClick={() => setActiveExam(null)}>{IC.arrowL} Quitter</button>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-sec)' }}>{activeExam}</span>
+        <span style={{ fontSize: 18, fontWeight: 800, fontFamily: 'monospace', color: 'var(--indigo)' }}>{fmtTimer(timer)}</span>
+      </div>
+      <div style={{ background: 'var(--border)', borderRadius: 20, height: 6, marginBottom: 20, overflow: 'hidden' }}><div style={{ width: `${((qIdx + 1) / questions.length) * 100}%`, height: '100%', background: 'var(--indigo)', borderRadius: 20, transition: 'width 0.3s' }} /></div>
+      <div className="card" style={{ padding: 28, marginBottom: 20 }}>
+        <div style={{ fontSize: 13, color: 'var(--indigo)', fontWeight: 700, marginBottom: 8 }}>Question {qIdx + 1}/{questions.length}</div>
+        <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.5, marginBottom: 20 }}>{q.question}</div>
+        {opts.map(([key, text]) => { const selected = answers[q.id] === key; return (
+          <div key={key} onClick={() => setAnswers(p => ({ ...p, [q.id]: key }))} style={{ padding: '14px 18px', marginBottom: 8, borderRadius: 14, border: selected ? '2px solid var(--indigo)' : '1.5px solid var(--border)', background: selected ? 'var(--indigo-bg)' : 'white', cursor: 'pointer', fontSize: 15, fontWeight: selected ? 700 : 500, color: selected ? 'var(--indigo-dark)' : 'var(--text)', transition: 'all 0.15s' }}>
+            <span style={{ display: 'inline-flex', width: 28, height: 28, borderRadius: '50%', border: selected ? '2px solid var(--indigo)' : '2px solid var(--border)', background: selected ? 'var(--indigo)' : 'white', color: selected ? 'white' : 'var(--text-sec)', alignItems: 'center', justifyContent: 'center', marginRight: 12, fontSize: 13, fontWeight: 800 }}>{key.toUpperCase()}</span>
+            {text}
+          </div>
+        ) })}
+      </div>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button onClick={() => { setQIdx(i => Math.max(0, i - 1)) }} disabled={qIdx <= 0} className="btn btn-secondary" style={{ flex: 1, opacity: qIdx > 0 ? 1 : 0.3 }}>Precedente</button>
+        {qIdx < questions.length - 1 ? <button onClick={() => setQIdx(i => i + 1)} className="btn btn-primary" style={{ flex: 2 }}>Suivante →</button>
+        : <button onClick={submit} className="btn btn-primary" style={{ flex: 2, background: 'var(--green)', borderColor: 'var(--green)' }}>Terminer ✓</button>}
+      </div>
+    </div>
+  )
+}
+
 // ═══ GAMES ═══
 function GameTimer({ tl }) { return <div style={{ width: '100%', background: 'var(--border)', borderRadius: 20, height: 10, overflow: 'hidden' }}><div style={{ width: `${(tl / 60) * 100}%`, height: '100%', background: tl > 20 ? 'var(--green)' : tl > 10 ? 'var(--gold)' : 'var(--red)', borderRadius: 20, transition: 'width 1s linear' }} /></div> }
 function MathGame({ userId, type, title, emoji, gen, onBack, earnXP }) {
@@ -450,7 +560,51 @@ function GamesPage({ userId, earnXP }) {
 }
 
 // ═══ ADMIN ═══
-function AdminDash({ students, sections, videos }) { return <div><h1 className="page-title">Dashboard</h1><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}><div className="stat-card"><div className="stat-label">Élèves</div><div className="stat-value" style={{ color: 'var(--indigo)' }}>{students.filter(s => s.active).length}</div></div><div className="stat-card"><div className="stat-label">Chapitres</div><div className="stat-value" style={{ color: 'var(--green)' }}>{sections.reduce((a, s) => a + (s.chapters?.length || 0), 0)}</div></div><div className="stat-card"><div className="stat-label">Vidéos</div><div className="stat-value" style={{ color: 'var(--gold)' }}>{videos.length}</div></div></div></div> }
+
+// ═══ ADMIN DASHBOARD (improved) ═══
+function AdminDash({ students, sections, videos }) {
+  const [chProgress, setChProgress] = useState({}); const [vidProgress, setVidProgress] = useState({})
+  useEffect(() => { (async () => {
+    const { data: cp } = await supabase.from('chapter_progress').select('chapter_id'); const cm = {}; (cp || []).forEach(r => cm[r.chapter_id] = (cm[r.chapter_id] || 0) + 1); setChProgress(cm)
+    const { data: vp } = await supabase.from('video_progress').select('video_id'); const vm = {}; (vp || []).forEach(r => vm[r.video_id] = (vm[r.video_id] || 0) + 1); setVidProgress(vm)
+  })() }, [])
+  const activeStudents = students.filter(s => s.active).length
+  const totalCh = sections.reduce((a, s) => a + (s.chapters?.length || 0), 0)
+  const avgCompletion = activeStudents > 0 && totalCh > 0 ? Math.round(Object.keys(chProgress).length / totalCh * 100) : 0
+
+  const topChapters = sections.flatMap(s => (s.chapters || []).map(ch => {
+    const vids = ch.videos || []
+    const totalViews = vids.reduce((a, v) => a + (vidProgress[v.id] || 0), 0)
+    return { title: ch.title, views: totalViews, section: s.title }
+  })).sort((a, b) => b.views - a.views).slice(0, 5)
+
+  return (
+    <div>
+      <h1 className="page-title">Dashboard</h1>
+      <p className="page-subtitle">Vue d ensemble de la plateforme</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+        <div style={{ background: 'var(--indigo-bg)', borderRadius: 16, padding: 20, textAlign: 'center' }}><div style={{ fontSize: 32, fontWeight: 900, color: 'var(--indigo-dark)' }}>{activeStudents}</div><div style={{ fontSize: 13, color: 'var(--indigo-dark)', fontWeight: 600, marginTop: 4 }}>eleves actifs</div></div>
+        <div style={{ background: 'var(--green-bg)', borderRadius: 16, padding: 20, textAlign: 'center' }}><div style={{ fontSize: 32, fontWeight: 900, color: 'var(--green-dark)' }}>{totalCh}</div><div style={{ fontSize: 13, color: 'var(--green-dark)', fontWeight: 600, marginTop: 4 }}>chapitres</div></div>
+        <div style={{ background: 'var(--violet-bg)', borderRadius: 16, padding: 20, textAlign: 'center' }}><div style={{ fontSize: 32, fontWeight: 900, color: '#7E22CE' }}>{videos.length}</div><div style={{ fontSize: 13, color: '#7E22CE', fontWeight: 600, marginTop: 4 }}>videos</div></div>
+        <div style={{ background: 'var(--orange-bg)', borderRadius: 16, padding: 20, textAlign: 'center' }}><div style={{ fontSize: 32, fontWeight: 900, color: '#C2410C' }}>{avgCompletion}%</div><div style={{ fontSize: 13, color: '#C2410C', fontWeight: 600, marginTop: 4 }}>completion moy.</div></div>
+      </div>
+      <div className="card">
+        <div className="card-header">📊 Chapitres les plus regardes</div>
+        {topChapters.map((ch, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: i === 0 ? 'var(--gold-bg)' : 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: i === 0 ? '#B45309' : 'var(--text-sec)' }}>{i + 1}</div>
+              <div><div style={{ fontSize: 15, fontWeight: 700 }}>{ch.title}</div><div style={{ fontSize: 12, color: 'var(--text-sec)' }}>{ch.section}</div></div>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--indigo)' }}>{ch.views} vues</div>
+          </div>
+        ))}
+        {!topChapters.length && <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-sec)' }}>Pas encore de donnees</div>}
+      </div>
+    </div>
+  )
+}
+
 
 function AdminStudents({ students, reload, showToast }) {
   const [modal, setModal] = useState(false); const [f, setF] = useState({ first_name: '', last_name: '', username: '', password: '' })
@@ -645,6 +799,8 @@ export default function Home() {
         {page === 'pdf' && viewingPdf && <PdfViewer url={viewingPdf.url} title={viewingPdf.title} onBack={() => { setPage('video'); setViewingPdf(null) }} />}
         {page === 'chapters' && <ChaptersPage sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} toggleChapterComplete={toggleChapterComplete} onSelectVideo={onSelectVideo} trackPdf={trackPdf} earnXP={earnXP} userId={user.id} />}
         {page === 'progress' && <ProgressPage sections={formSections} completedChapters={completedChapters} completedVideos={completedVideos} xp={xp} streak={streak} totalTime={totalTime} />}
+        {page === 'flashcards' && <FlashcardsPage userId={user.id} />}
+        {page === 'exam' && <ExamPage userId={user.id} earnXP={earnXP} />}
         {page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
       </div>
       {toast && <Toast message={toast} />}
