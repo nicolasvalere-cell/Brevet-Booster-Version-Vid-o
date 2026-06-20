@@ -610,8 +610,21 @@ export default function Home() {
 
   if (isAdmin) {
     const adminNav = [{ id: 'admin-dash', label: 'Dashboard', icon: IC.dash }, { id: 'admin-students', label: 'Élèves', icon: IC.users }, { id: 'admin-formation', label: 'Contenu', icon: IC.book }, { id: 'admin-profs', label: 'Professeurs', icon: IC.users }, { id: 'admin-progress', label: 'Progression', icon: IC.chart }]
+    const adminNavStyle = (active) => ({ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', margin: '2px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: active ? 700 : 500, color: active ? 'var(--indigo)' : 'var(--text-sec)', background: active ? 'var(--indigo-bg)' : 'transparent', transition: 'all 0.15s' })
     return <div className="app-layout">
-      <div className="sidebar"><div className="sidebar-brand"><div className="sidebar-logo">B</div><span className="sidebar-title">Brevet <span>Booster</span></span></div><div className="sidebar-section-label">Admin</div><nav style={{ flex: 1, padding: '0 10px' }}>{adminNav.map(it => <div key={it.id} className={`sidebar-nav-item ${page === it.id ? 'active' : ''}`} onClick={() => setPage(it.id)}>{it.icon} <span>{it.label}</span></div>)}</nav><div className="sidebar-bottom"><button className="sidebar-logout" onClick={logout}>{IC.logout} Déconnexion</button></div></div>
+      <div className="sidebar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px', borderBottom: '1.5px solid var(--border)' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg, var(--indigo), var(--indigo-dark))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 14 }}>B</div>
+          <span style={{ fontSize: 16, fontWeight: 800 }}>Brevet <span style={{ color: 'var(--indigo)' }}>Booster</span></span>
+        </div>
+        <div style={{ padding: '12px 20px 6px', fontSize: 11, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: 0.8 }}>Administration</div>
+        <nav style={{ flex: 1, padding: '4px 0' }}>
+          {adminNav.map(it => <div key={it.id} style={adminNavStyle(page === it.id)} onClick={() => setPage(it.id)}>{it.icon} <span>{it.label}</span></div>)}
+        </nav>
+        <div style={{ padding: '10px 20px', borderTop: '1.5px solid var(--border)' }}>
+          <button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sec)', fontSize: 14, fontFamily: 'var(--font)', padding: '8px 0', fontWeight: 600 }}>{IC.logout} <span>Déconnexion</span></button>
+        </div>
+      </div>
       <div className="main-content">
         {page === 'admin-dash' && <AdminDash students={students} sections={allSections} videos={videos} />}
         {page === 'admin-students' && <AdminStudents students={students} reload={loadData} showToast={showToast} />}
