@@ -2,6 +2,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
+// Inject animations
+if (typeof document !== 'undefined' && !document.getElementById('bb-anims')) {
+  const s = document.createElement('style'); s.id = 'bb-anims'
+  s.textContent = '@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0.35)}50%{box-shadow:0 0 0 10px rgba(99,102,241,0)}}@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}'
+  document.head.appendChild(s)
+}
+
 const BREVET_DATE = new Date('2026-06-29T08:00:00')
 const BADGES = [
   { id: 'diamond', name: 'Diamant', emoji: '💎', min: 20, color: '#7C3AED' },
@@ -600,7 +607,7 @@ function FlashcardsPage({ userId }) {
   )
 }
 
-// ═══ EXAMEN BLANC (Roadmap + lockout) ═══
+// ═══ EXAMEN BLANC (Roadmap gamifiee + lockout) ═══
 function ExamPage({ userId, earnXP }) {
   const [exams, setExams] = useState([]); const [results, setResults] = useState([]); const [activeExam, setActiveExam] = useState(null); const [questions, setQuestions] = useState([]); const [qIdx, setQIdx] = useState(0); const [answers, setAnswers] = useState({}); const [submitted, setSubmitted] = useState(false); const [timer, setTimer] = useState(0)
 
@@ -612,122 +619,126 @@ function ExamPage({ userId, earnXP }) {
     setResults(r || [])
   })() }, [userId])
 
-  const getExamStatus = (name, idx) => {
-    const examResults = results.filter(r => r.exam_name === name)
-    const passed = examResults.some(r => r.score >= 8)
-    if (passed) return { status: 'completed', best: Math.max(...examResults.map(r => r.score)), total: examResults[0]?.total || 10 }
-    // Check if previous exam is completed (except first)
-    if (idx > 0) { const prevName = exams[idx - 1]; const prevPassed = results.some(r => r.exam_name === prevName && r.score >= 8); if (!prevPassed) return { status: 'locked' } }
-    // Check 36h lockout
-    const failedResults = examResults.filter(r => r.score < 8)
-    if (failedResults.length > 0) {
-      const lastFail = new Date(failedResults[0].completed_at)
-      const unlockAt = new Date(lastFail.getTime() + 36 * 60 * 60 * 1000)
-      if (new Date() < unlockAt) {
-        const hoursLeft = Math.ceil((unlockAt - new Date()) / (1000 * 60 * 60))
-        return { status: 'cooldown', hoursLeft, best: Math.max(...examResults.map(r => r.score)), total: examResults[0]?.total || 10 }
-      }
-    }
-    const best = examResults.length > 0 ? Math.max(...examResults.map(r => r.score)) : null
-    return { status: 'available', best, total: examResults[0]?.total || 10 }
+  const getStatus = (name, idx) => {
+    const er = results.filter(r => r.exam_name === name)
+    const passed = er.some(r => r.score >= 8)
+    if (passed) { const best = Math.max(...er.map(r => r.score)); return { status: 'done', best, total: er[0]?.total || 10 } }
+    if (idx > 0) { const prev = exams[idx - 1]; if (!results.some(r => r.exam_name === prev && r.score >= 8)) return { status: 'locked' } }
+    const fails = er.filter(r => r.score < 8)
+    if (fails.length > 0) { const last = new Date(fails[0].completed_at); const unlock = new Date(last.getTime() + 36*3600000); if (new Date() < unlock) { const h = Math.ceil((unlock - new Date()) / 3600000); return { status: 'wait', hours: h, best: Math.max(...er.map(r => r.score)), total: er[0]?.total || 10 } } }
+    return { status: 'open', best: er.length > 0 ? Math.max(...er.map(r => r.score)) : null, total: er[0]?.total || 10 }
   }
-
-  const getDifficulty = idx => idx < 3 ? { label: 'Facile', color: 'var(--green)', bg: 'var(--green-bg)' } : idx < 6 ? { label: 'Moyen', color: 'var(--orange)', bg: 'var(--orange-bg)' } : { label: 'Difficile', color: 'var(--red)', bg: 'var(--red-bg)' }
-  const completedCount = exams.filter((e, i) => getExamStatus(e, i).status === 'completed').length
+  const getDiff = i => i < 3 ? { label: 'Facile', color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' } : i < 6 ? { label: 'Moyen', color: '#C2410C', bg: '#FFF7ED', border: '#FDBA74' } : { label: 'Difficile', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' }
+  const getStars = score => score >= 10 ? 3 : score >= 9 ? 3 : score >= 8 ? 2 : 1
+  const done = exams.filter((e, i) => getStatus(e, i).status === 'done').length
 
   const startExam = async name => { const { data } = await supabase.from('quiz_questions').select('*').eq('exam_name', name).order('sort_order'); setQuestions(data || []); setActiveExam(name); setQIdx(0); setAnswers({}); setSubmitted(false); setTimer(0) }
   useEffect(() => { if (!activeExam || submitted) return; const t = setInterval(() => setTimer(s => s + 1), 1000); return () => clearInterval(t) }, [activeExam, submitted])
+  const submit = async () => { setSubmitted(true); let sc = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) sc++ }); try { await supabase.from('quiz_results').insert({ user_id: userId, exam_name: activeExam, score: sc, total: questions.length }); await earnXP(userId, 'game_played'); const { data: r } = await supabase.from('quiz_results').select('*').eq('user_id', userId).order('completed_at', { ascending: false }); setResults(r || []) } catch {} }
+  const fmtT = s => Math.floor(s/60) + ':' + String(s%60).padStart(2,'0')
 
-  const submit = async () => {
-    setSubmitted(true); let score = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) score++ })
-    try { await supabase.from('quiz_results').insert({ user_id: userId, exam_name: activeExam, score, total: questions.length }); await earnXP(userId, 'game_played')
-      const { data: r } = await supabase.from('quiz_results').select('*').eq('user_id', userId).order('completed_at', { ascending: false }); setResults(r || [])
-    } catch {}
-  }
-  const fmtTimer = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0')
-
-  // ═══ ROADMAP (home) ═══
+  // ROADMAP
   if (!activeExam) return (
-    <div style={{ maxWidth: 550, margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🏆</div>
-        <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: -0.5 }}>Examens blancs</h1>
-        <p style={{ fontSize: 16, color: 'var(--text-sec)', marginTop: 4 }}>Valide les 10 niveaux pour prouver que tu es pret</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16 }}>
-          <div style={{ width: 120 }}><ProgressBar value={completedCount} max={exams.length} height={8} /></div>
-          <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--indigo)' }}>{completedCount}/{exams.length}</span>
+    <div style={{ maxWidth: 520, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--indigo)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>Le parcours du champion</div>
+        <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: -0.5, marginBottom: 14 }}>Examens blancs</h1>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'var(--indigo-bg)', padding: '8px 20px', borderRadius: 20, border: '1.5px solid var(--indigo-light)' }}>
+          <div style={{ width: 100, height: 7, background: 'var(--border)', borderRadius: 8, overflow: 'hidden' }}><div style={{ width: `${(done/exams.length)*100}%`, height: '100%', background: 'var(--indigo)', borderRadius: 8 }} /></div>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--indigo-dark)' }}>{done}/{exams.length}</span>
         </div>
-        <p style={{ fontSize: 13, color: 'var(--text-light)', marginTop: 8 }}>8/10 minimum pour valider · 36h de pause si tu echoues</p>
+        <div style={{ fontSize: 13, color: 'var(--text-sec)', marginTop: 8 }}>8/10 minimum pour valider · 36h de pause si echec</div>
       </div>
 
-      {/* Roadmap path */}
-      <div style={{ position: 'relative', padding: '0 20px' }}>
-        {exams.map((name, i) => {
-          const info = getExamStatus(name, i)
-          const diff = getDifficulty(i)
+      {/* Trophy */}
+      <div style={{ textAlign: 'center', marginBottom: 10 }}>
+        <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'linear-gradient(135deg, #FEF3C7, #FDE68A)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, border: '3px solid var(--gold)', boxShadow: '0 4px 16px rgba(245,158,11,0.25)' }}>🏆</div>
+        <div style={{ fontSize: 12, color: '#92400E', fontWeight: 700, marginTop: 4 }}>Objectif final</div>
+      </div>
+
+      {/* Path */}
+      <div style={{ position: 'relative', padding: '0 16px' }}>
+        <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 3, background: 'repeating-linear-gradient(to bottom, var(--indigo-light) 0px, var(--indigo-light) 6px, transparent 6px, transparent 12px)', transform: 'translateX(-50%)' }} />
+
+        {[...exams].reverse().map((name, ri) => {
+          const i = exams.length - 1 - ri
+          const info = getStatus(name, i)
+          const diff = getDiff(i)
           const num = i + 1
-          const isLast = i === exams.length - 1
+          const isRight = ri % 2 === 0
+          const stars = info.best ? getStars(info.best) : 0
+
+          const nodeStyle = info.status === 'done' ? { width: 50, height: 50, borderRadius: '50%', background: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, boxShadow: '0 4px 14px rgba(34,197,94,0.3)', border: '3px solid var(--green-light)' }
+            : info.status === 'open' ? { width: 56, height: 56, borderRadius: '50%', background: 'var(--indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, border: '3px solid var(--indigo-light)', animation: 'pulse 2s infinite', boxShadow: '0 4px 16px rgba(99,102,241,0.3)' }
+            : info.status === 'wait' ? { width: 50, height: 50, borderRadius: '50%', background: 'var(--orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, border: '3px solid var(--orange-light)', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }
+            : { width: 44, height: 44, borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, opacity: 0.5 }
+
+          const cardStyle = info.status === 'done' ? { background: 'var(--green-bg)', border: '1.5px solid var(--green-light)', borderRadius: 14, padding: '12px 16px' }
+            : info.status === 'open' ? { background: 'var(--card)', border: '2px solid var(--indigo-light)', borderRadius: 14, padding: '14px 16px', cursor: 'pointer', boxShadow: '0 2px 12px rgba(99,102,241,0.08)' }
+            : info.status === 'wait' ? { background: 'var(--orange-bg)', border: '1.5px solid var(--orange-light)', borderRadius: 14, padding: '12px 16px' }
+            : { background: 'var(--bg)', border: '1.5px solid var(--border)', borderRadius: 14, padding: '12px 16px', opacity: 0.45 }
+
           return (
-            <div key={name} style={{ display: 'flex', gap: 16, marginBottom: isLast ? 0 : 0, position: 'relative' }}>
-              {/* Vertical line */}
-              {!isLast && <div style={{ position: 'absolute', left: 27, top: 56, bottom: -8, width: 3, background: info.status === 'completed' ? 'var(--green-light)' : 'var(--border)', zIndex: 0 }} />}
-              {/* Node */}
-              <div style={{ flexShrink: 0, zIndex: 1 }}>
-                <div style={{ width: 56, height: 56, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, boxShadow: info.status === 'available' ? '0 4px 16px rgba(99,102,241,0.3)' : info.status === 'completed' ? '0 4px 16px rgba(34,197,94,0.3)' : 'none',
-                  background: info.status === 'completed' ? 'var(--green)' : info.status === 'available' ? 'var(--indigo)' : info.status === 'cooldown' ? 'var(--orange)' : 'var(--border)',
-                  color: info.status === 'locked' ? 'var(--text-light)' : 'white',
-                  border: info.status === 'available' ? '3px solid white' : 'none'
-                }}>
-                  {info.status === 'completed' ? '✓' : info.status === 'locked' ? '🔒' : info.status === 'cooldown' ? '⏳' : num}
+            <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, flexDirection: isRight ? 'row-reverse' : 'row' }}>
+              <div style={{ flex: 1, textAlign: isRight ? 'left' : 'right' }}>
+                <div style={cardStyle} onClick={() => info.status === 'open' && startExam(name)}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRight ? 'row' : 'row-reverse', gap: 8 }}>
+                    <div style={{ textAlign: isRight ? 'left' : 'right' }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: info.status === 'done' ? 'var(--green-dark)' : info.status === 'open' ? 'var(--text)' : info.status === 'wait' ? '#9A3412' : 'var(--text-sec)' }}>Niveau {num}</div>
+                      <div style={{ fontSize: 12, marginTop: 2, color: info.status === 'done' ? 'var(--green-dark)' : info.status === 'open' ? 'var(--indigo)' : info.status === 'wait' ? '#C2410C' : 'var(--text-light)' }}>
+                        {info.status === 'done' && <span>Valide {info.best}/{info.total}</span>}
+                        {info.status === 'open' && <span style={{ fontWeight: 700 }}>Jouer →</span>}
+                        {info.status === 'wait' && <span>⏳ {info.hours}h — {info.best}/{info.total}</span>}
+                        {info.status === 'locked' && <span>🔒 Valide le {num-1} d abord</span>}
+                      </div>
+                    </div>
+                    <div>
+                      {info.status === 'done' && <div style={{ display: 'flex', gap: 1 }}>{[1,2,3].map(s => <span key={s} style={{ fontSize: 14, color: s <= stars ? '#F59E0B' : 'var(--border)' }}>★</span>)}</div>}
+                      {(info.status === 'open' || info.status === 'locked' || info.status === 'wait') && <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: diff.bg, color: diff.color, border: `1px solid ${diff.border}` }}>{diff.label}</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
-              {/* Content */}
-              <div onClick={() => info.status === 'available' && startExam(name)} style={{ flex: 1, padding: '14px 20px', marginBottom: 12, borderRadius: 16, cursor: info.status === 'available' ? 'pointer' : 'default', opacity: info.status === 'locked' ? 0.5 : 1,
-                background: info.status === 'completed' ? 'var(--green-bg)' : info.status === 'available' ? 'var(--card)' : info.status === 'cooldown' ? 'var(--orange-bg)' : 'var(--bg)',
-                border: info.status === 'available' ? '2px solid var(--indigo-light)' : info.status === 'completed' ? '1.5px solid var(--green-light)' : '1.5px solid var(--border)',
-                transition: 'all 0.15s'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 17, fontWeight: 800, color: info.status === 'completed' ? 'var(--green-dark)' : info.status === 'available' ? 'var(--text)' : 'var(--text-sec)' }}>Niveau {num}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: diff.bg, color: diff.color }}>{diff.label}</span>
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text-sec)' }}>
-                  {info.status === 'completed' && <span style={{ color: 'var(--green-dark)', fontWeight: 700 }}>Valide ✅ — {info.best}/{info.total}</span>}
-                  {info.status === 'available' && <span style={{ color: 'var(--indigo)', fontWeight: 600 }}>Pret a jouer →{info.best !== null ? ` (meilleur: ${info.best}/${info.total})` : ''}</span>}
-                  {info.status === 'cooldown' && <span style={{ color: '#C2410C', fontWeight: 600 }}>Reessaie dans {info.hoursLeft}h — {info.best}/{info.total}</span>}
-                  {info.status === 'locked' && <span>Valide le niveau {num - 1} d abord</span>}
-                </div>
+              <div style={nodeStyle}>
+                {info.status === 'done' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                : info.status === 'open' ? <span style={{ fontSize: 22, fontWeight: 900, color: 'white' }}>{num}</span>
+                : info.status === 'wait' ? <span style={{ fontSize: 18, color: 'white' }}>⏳</span>
+                : <span style={{ fontSize: 16, color: 'var(--text-light)' }}>🔒</span>}
               </div>
+              <div style={{ flex: 1 }} />
             </div>
           )
         })}
+
+        {/* Start badge */}
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--indigo-bg)', padding: '6px 16px', borderRadius: 20, fontSize: 13, color: 'var(--indigo-dark)', fontWeight: 700, border: '1.5px solid var(--indigo-light)' }}>🚀 Depart</div>
+        </div>
       </div>
 
-      {completedCount === exams.length && <div style={{ textAlign: 'center', marginTop: 28, padding: '24px 20px', background: 'linear-gradient(135deg, #FEF3C7, #FFFBEB)', borderRadius: 16, border: '2px solid var(--gold-light)' }}><div style={{ fontSize: 48, marginBottom: 8 }}>🏆</div><div style={{ fontSize: 22, fontWeight: 900, color: '#92400E' }}>Tous les niveaux valides !</div><div style={{ fontSize: 15, color: '#B45309', marginTop: 4 }}>Tu es pret pour le brevet, champion !</div></div>}
+      {done === exams.length && <div style={{ textAlign: 'center', marginTop: 28, padding: '24px 20px', background: 'linear-gradient(135deg, #FEF3C7, #FFFBEB)', borderRadius: 18, border: '2px solid var(--gold-light)' }}><div style={{ fontSize: 48, marginBottom: 8 }}>🏆</div><div style={{ fontSize: 22, fontWeight: 900, color: '#92400E' }}>Champion ! Tous les niveaux valides !</div><div style={{ fontSize: 15, color: '#B45309', marginTop: 4 }}>Tu es pret pour le brevet !</div></div>}
     </div>
   )
 
-  // ═══ RESULTS ═══
+  // RESULTS
   if (submitted) {
-    let score = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) score++ })
-    const passed = score >= 8; const pct = Math.round((score / questions.length) * 100)
+    let sc = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) sc++ })
+    const passed = sc >= 8
     return (
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <div style={{ fontSize: 56, marginBottom: 12 }}>{passed ? '🎉' : '😤'}</div>
-          <div style={{ fontSize: 48, fontWeight: 900, color: passed ? 'var(--green)' : 'var(--red)' }}>{score}/{questions.length}</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-sec)', marginTop: 4 }}>
-            {passed ? 'Niveau valide ! Bravo !' : `Il te faut 8/10. Reessaie dans 36h !`}
-          </div>
-          <div style={{ fontSize: 14, color: 'var(--text-light)', marginTop: 8 }}>Temps : {fmtTimer(timer)}</div>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}>
-            <button className="btn btn-primary" onClick={() => setActiveExam(null)}>Retour a la roadmap</button>
-          </div>
+          <div style={{ fontSize: 48, fontWeight: 900, color: passed ? 'var(--green)' : 'var(--red)' }}>{sc}/{questions.length}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-sec)', marginTop: 4 }}>{passed ? 'Niveau valide ! Bravo !' : 'Il te faut 8/10. Reessaie dans 36h !'}</div>
+          {passed && <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 8 }}>{[1,2,3].map(s => <span key={s} style={{ fontSize: 24, color: s <= getStars(sc) ? '#F59E0B' : 'var(--border)' }}>★</span>)}</div>}
+          <div style={{ fontSize: 14, color: 'var(--text-light)', marginTop: 8 }}>Temps : {fmtT(timer)}</div>
+          <button className="btn btn-primary" onClick={() => setActiveExam(null)} style={{ marginTop: 24 }}>Retour a la roadmap</button>
         </div>
-        <div style={{ marginTop: 20 }}>{questions.map((q, i) => { const correct = answers[q.id] === q.correct_answer; const opts = [['a', q.option_a], ['b', q.option_b], ['c', q.option_c], ['d', q.option_d]]; return (
-          <div key={q.id} className="card" style={{ marginBottom: 10, padding: 20, borderColor: correct ? 'var(--green-light)' : 'var(--red-light)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>{i + 1}. {q.question}</div>
-            {opts.map(([key, text]) => { const isC = key === q.correct_answer; const isCh = key === answers[q.id]; return <div key={key} style={{ padding: '8px 14px', marginBottom: 4, borderRadius: 10, fontSize: 14, background: isC ? 'var(--green-bg)' : isCh && !isC ? 'var(--red-bg)' : 'var(--bg)', color: isC ? 'var(--green-dark)' : isCh && !isC ? 'var(--red)' : 'var(--text)', fontWeight: isC || isCh ? 700 : 400 }}>{isC ? '✅' : isCh ? '❌' : '○'} {text}</div> })}
+        <div style={{ marginTop: 20 }}>{questions.map((q, qi) => { const ok = answers[q.id] === q.correct_answer; const opts = [['a',q.option_a],['b',q.option_b],['c',q.option_c],['d',q.option_d]]; return (
+          <div key={q.id} className="card" style={{ marginBottom: 10, padding: 20, borderColor: ok ? 'var(--green-light)' : 'var(--red-light)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>{qi+1}. {q.question}</div>
+            {opts.map(([k,t]) => { const isC = k === q.correct_answer; const isCh = k === answers[q.id]; return <div key={k} style={{ padding: '8px 14px', marginBottom: 4, borderRadius: 10, fontSize: 14, background: isC ? 'var(--green-bg)' : isCh && !isC ? 'var(--red-bg)' : 'var(--bg)', color: isC ? 'var(--green-dark)' : isCh && !isC ? 'var(--red)' : 'var(--text)', fontWeight: isC || isCh ? 700 : 400 }}>{isC ? '✅' : isCh ? '❌' : '○'} {t}</div> })}
             {q.explanation && <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 10, background: 'var(--indigo-bg)', fontSize: 13, color: 'var(--indigo-dark)' }}>💡 {q.explanation}</div>}
           </div>
         ) })}</div>
@@ -735,34 +746,39 @@ function ExamPage({ userId, earnXP }) {
     )
   }
 
-  // ═══ QUIZ ═══
+  // QUIZ
   const q = questions[qIdx]; if (!q) return null
-  const opts = [['a', q.option_a], ['b', q.option_b], ['c', q.option_c], ['d', q.option_d]]
+  const opts = [['a',q.option_a],['b',q.option_b],['c',q.option_c],['d',q.option_d]]
   return (
     <div style={{ maxWidth: 600, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <button className="btn btn-secondary btn-sm" onClick={() => setActiveExam(null)}>{IC.arrowL} Quitter</button>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-sec)' }}>{activeExam}</span>
-        <span style={{ fontSize: 18, fontWeight: 800, fontFamily: 'monospace', color: 'var(--indigo)' }}>{fmtTimer(timer)}</span>
+        <span style={{ fontSize: 18, fontWeight: 800, fontFamily: 'monospace', color: 'var(--indigo)' }}>{fmtT(timer)}</span>
       </div>
-      <div style={{ background: 'var(--border)', borderRadius: 20, height: 6, marginBottom: 20, overflow: 'hidden' }}><div style={{ width: `${((qIdx + 1) / questions.length) * 100}%`, height: '100%', background: 'var(--indigo)', borderRadius: 20, transition: 'width 0.3s' }} /></div>
+      <div style={{ background: 'var(--border)', borderRadius: 20, height: 6, marginBottom: 20, overflow: 'hidden' }}><div style={{ width: `${((qIdx+1)/questions.length)*100}%`, height: '100%', background: 'var(--indigo)', borderRadius: 20, transition: 'width 0.3s' }} /></div>
       <div className="card" style={{ padding: 28, marginBottom: 20 }}>
-        <div style={{ fontSize: 13, color: 'var(--indigo)', fontWeight: 700, marginBottom: 8 }}>Question {qIdx + 1}/{questions.length}</div>
+        <div style={{ fontSize: 13, color: 'var(--indigo)', fontWeight: 700, marginBottom: 8 }}>Question {qIdx+1}/{questions.length}</div>
         <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.5, marginBottom: 20 }}>{q.question}</div>
-        {opts.map(([key, text]) => { const sel = answers[q.id] === key; return (
-          <div key={key} onClick={() => setAnswers(p => ({ ...p, [q.id]: key }))} style={{ padding: '14px 18px', marginBottom: 8, borderRadius: 14, border: sel ? '2px solid var(--indigo)' : '1.5px solid var(--border)', background: sel ? 'var(--indigo-bg)' : 'white', cursor: 'pointer', fontSize: 15, fontWeight: sel ? 700 : 500, color: sel ? 'var(--indigo-dark)' : 'var(--text)', transition: 'all 0.15s' }}>
-            <span style={{ display: 'inline-flex', width: 28, height: 28, borderRadius: '50%', border: sel ? '2px solid var(--indigo)' : '2px solid var(--border)', background: sel ? 'var(--indigo)' : 'white', color: sel ? 'white' : 'var(--text-sec)', alignItems: 'center', justifyContent: 'center', marginRight: 12, fontSize: 13, fontWeight: 800 }}>{key.toUpperCase()}</span>{text}
+        {opts.map(([k,t]) => { const sel = answers[q.id] === k; return (
+          <div key={k} onClick={() => setAnswers(p => ({...p,[q.id]:k}))} style={{ padding: '14px 18px', marginBottom: 8, borderRadius: 14, border: sel ? '2px solid var(--indigo)' : '1.5px solid var(--border)', background: sel ? 'var(--indigo-bg)' : 'white', cursor: 'pointer', fontSize: 15, fontWeight: sel ? 700 : 500, color: sel ? 'var(--indigo-dark)' : 'var(--text)', transition: 'all 0.15s' }}>
+            <span style={{ display: 'inline-flex', width: 28, height: 28, borderRadius: '50%', border: sel ? '2px solid var(--indigo)' : '2px solid var(--border)', background: sel ? 'var(--indigo)' : 'white', color: sel ? 'white' : 'var(--text-sec)', alignItems: 'center', justifyContent: 'center', marginRight: 12, fontSize: 13, fontWeight: 800 }}>{k.toUpperCase()}</span>{t}
           </div>
         ) })}
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
-        <button onClick={() => setQIdx(i => Math.max(0, i - 1))} disabled={qIdx <= 0} className="btn btn-secondary" style={{ flex: 1, opacity: qIdx > 0 ? 1 : 0.3 }}>Precedente</button>
-        {qIdx < questions.length - 1 ? <button onClick={() => setQIdx(i => i + 1)} className="btn btn-primary" style={{ flex: 2 }}>Suivante →</button>
+        <button onClick={() => setQIdx(i => Math.max(0,i-1))} disabled={qIdx<=0} className="btn btn-secondary" style={{ flex: 1, opacity: qIdx > 0 ? 1 : 0.3 }}>Precedente</button>
+        {qIdx < questions.length-1 ? <button onClick={() => setQIdx(i => i+1)} className="btn btn-primary" style={{ flex: 2 }}>Suivante →</button>
         : <button onClick={submit} className="btn btn-primary" style={{ flex: 2, background: 'var(--green)', borderColor: 'var(--green)' }}>Terminer ✓</button>}
       </div>
     </div>
   )
 }
+
+
+// ═══ FLASHCARDS (spaced repetition) ═══
+
+// ═══ EXAMEN BLANC (Roadmap + lockout) ═══
 
 // ═══ GAMES ═══
 function GameTimer({ tl }) { return <div style={{ width: '100%', background: 'var(--border)', borderRadius: 20, height: 10, overflow: 'hidden' }}><div style={{ width: `${(tl / 60) * 100}%`, height: '100%', background: tl > 20 ? 'var(--green)' : tl > 10 ? 'var(--gold)' : 'var(--red)', borderRadius: 20, transition: 'width 1s linear' }} /></div> }
