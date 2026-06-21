@@ -204,7 +204,7 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
         </div>
       </div>
       {nextLevel && <div style={{ marginBottom: 24 }}><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-light)', marginBottom: 4 }}><span>{level.emoji} {level.name}</span><span>{nextLevel.emoji} {nextLevel.name} — {nextLevel.min} XP</span></div><div style={{ background: 'var(--border)', borderRadius: 20, height: 5, overflow: 'hidden' }}><div style={{ width: Math.min(100, (xpIn / xpFor) * 100) + '%', height: '100%', background: 'linear-gradient(90deg, var(--indigo), var(--indigo-dark))', borderRadius: 20 }} /></div></div>}
-      {pct === 0 && <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-light)', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}><div style={{ fontSize: 16, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>🎯 Par où commencer ?</div><div style={{ fontSize: 14, color: '#047857', lineHeight: 1.7 }}>1. Clique sur <b>Continuer la formation</b><br/>2. Ouvre le premier chapitre dans le menu<br/>3. Regarde les vidéos et coche-les</div></div>}
+      {pct === 0 && <div style={{ background: 'var(--green-bg)', border: '1.5px solid var(--green-light)', borderRadius: 16, padding: '16px 20px', marginBottom: 20 }}><div style={{ fontSize: 16, fontWeight: 800, color: '#065F46', marginBottom: 4 }}>🎯 Bienvenue sur Brevet Booster !</div><div style={{ fontSize: 14, color: '#047857', lineHeight: 1.7 }}>Clique sur <b>Continuer la formation</b> pour commencer ta premiere video.</div></div>}
       {/* Circle + stats */}
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px', marginBottom: 16, textAlign: 'center' }}>
         <svg width="130" height="130" viewBox="0 0 130 130" style={{ marginBottom: 12 }}>
@@ -222,6 +222,22 @@ function WelcomePage({ completedChapters, totalChapters, completedVideos, totalV
         ))}
       </div>
       <button onClick={onContinue} className="btn btn-primary" style={{ width: '100%', padding: 16, fontSize: 16, borderRadius: 14, marginBottom: 16 }}>Continuer la formation →</button>
+      {/* Guide */}
+      <div className="card" style={{ padding: '20px 22px', marginBottom: 16 }}>
+        <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 14 }}>📖 Comment utiliser la plateforme</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {[['1', 'var(--indigo-bg)', 'var(--indigo-dark)', 'Regarde les cours video', 'Ouvre les chapitres dans le menu a gauche et regarde les videos dans l ordre. Coche chaque video une fois comprise.'],
+            ['2', 'var(--orange-bg)', '#C2410C', 'Fais les exercices', 'Apres chaque chapitre, telecharge le PDF Exercices et entraine-toi. Verifie avec le PDF Auto-eval.'],
+            ['3', 'var(--green-bg)', 'var(--green-dark)', 'Revise avec les flashcards', 'Chaque jour, revise tes formules. Le systeme de repetition espacee t aide a tout retenir sur le long terme.'],
+            ['4', 'var(--violet-bg)', '#7E22CE', 'Passe les examens blancs', 'Valide les 10 niveaux pour prouver que tu es pret. 8/10 minimum pour passer au suivant !']
+          ].map(([num, bg, color, title, desc]) => (
+            <div key={num} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color, flexShrink: 0 }}>{num}</div>
+              <div><div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>{title}</div><div style={{ fontSize: 14, color: 'var(--text-sec)', lineHeight: 1.6 }}>{desc}</div></div>
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="card" style={{ padding: '16px 20px' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}><span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-sec)' }}>Badges</span><span style={{ fontSize: 13, color: 'var(--indigo)', fontWeight: 600 }}>Plus tu avances, plus tu montes en grade</span></div><div style={{ display: 'flex', justifyContent: 'space-around' }}>{[...BADGES].reverse().map(b => <div key={b.id} style={{ textAlign: 'center', opacity: completedChapters.length >= b.min ? 1 : 0.3 }}><div style={{ width: 44, height: 44, borderRadius: 14, background: completedChapters.length >= b.min ? 'var(--gold-bg)' : 'var(--bg)', border: completedChapters.length >= b.min ? '1.5px solid var(--gold-light)' : '1.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 4px' }}>{b.emoji}</div><div style={{ fontSize: 11, fontWeight: 700, color: completedChapters.length >= b.min ? b.color : 'var(--text-sec)' }}>{b.name}</div></div>)}</div></div>
     </div>
   )
@@ -651,22 +667,20 @@ function ExamPage({ userId, earnXP }) {
         <div style={{ fontSize: 13, color: 'var(--text-sec)', marginTop: 8 }}>8/10 minimum pour valider · 36h de pause si echec</div>
       </div>
 
-      {/* Trophy */}
-      <div style={{ textAlign: 'center', marginBottom: 10 }}>
-        <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'linear-gradient(135deg, #FEF3C7, #FDE68A)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, border: '3px solid var(--gold)', boxShadow: '0 4px 16px rgba(245,158,11,0.25)' }}>🏆</div>
-        <div style={{ fontSize: 12, color: '#92400E', fontWeight: 700, marginTop: 4 }}>Objectif final</div>
-      </div>
-
       {/* Path */}
       <div style={{ position: 'relative', padding: '0 16px' }}>
         <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 3, background: 'repeating-linear-gradient(to bottom, var(--indigo-light) 0px, var(--indigo-light) 6px, transparent 6px, transparent 12px)', transform: 'translateX(-50%)' }} />
 
-        {[...exams].reverse().map((name, ri) => {
-          const i = exams.length - 1 - ri
+      {/* Start badge */}
+        <div style={{ textAlign: 'center', marginBottom: 14 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--indigo-bg)', padding: '6px 16px', borderRadius: 20, fontSize: 13, color: 'var(--indigo-dark)', fontWeight: 700, border: '1.5px solid var(--indigo-light)' }}>🚀 Depart</div>
+        </div>
+
+        {exams.map((name, i) => {
           const info = getStatus(name, i)
           const diff = getDiff(i)
           const num = i + 1
-          const isRight = ri % 2 === 0
+          const isRight = i % 2 === 1
           const stars = info.best ? getStars(info.best) : 0
 
           const nodeStyle = info.status === 'done' ? { width: 50, height: 50, borderRadius: '50%', background: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, boxShadow: '0 4px 14px rgba(34,197,94,0.3)', border: '3px solid var(--green-light)' }
@@ -711,9 +725,10 @@ function ExamPage({ userId, earnXP }) {
           )
         })}
 
-        {/* Start badge */}
-        <div style={{ textAlign: 'center', marginTop: 8 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--indigo-bg)', padding: '6px 16px', borderRadius: 20, fontSize: 13, color: 'var(--indigo-dark)', fontWeight: 700, border: '1.5px solid var(--indigo-light)' }}>🚀 Depart</div>
+        {/* Trophy at bottom */}
+        <div style={{ textAlign: 'center', marginTop: 14 }}>
+          <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'linear-gradient(135deg, #FEF3C7, #FDE68A)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, border: '3px solid var(--gold)', boxShadow: '0 4px 16px rgba(245,158,11,0.25)' }}>🏆</div>
+          <div style={{ fontSize: 13, color: '#92400E', fontWeight: 700, marginTop: 4 }}>Pret pour le brevet !</div>
         </div>
       </div>
 
