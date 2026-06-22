@@ -176,7 +176,7 @@ function CourseSidebar({ sections, completedVideos, completedChapters, currentPa
         {/* Dark mode toggle */}
         <div style={{ padding: '4px 0' }}>
           <div onClick={() => setDarkMode(!darkMode)} style={navStyle(false)}>
-            <span style={{ fontSize: 16 }}>{darkMode ? '\u2600\uFE0F' : '\uD83C\uDF19'}</span>
+            <span style={{ fontSize: 16 }}>{darkMode ? '☀️' : '🌙'}</span>
             <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
           </div>
         </div>
@@ -470,10 +470,14 @@ function FlashcardsPage({ userId }) {
   const [sessionKnown, setSessionKnown] = useState(0); const [done, setDone] = useState(false)
 
   const loadData = useCallback(async () => {
-    const { data: cards } = await supabase.from('flashcards').select('*').order('sort_order')
-    setAllCards(cards || []); setCats([...new Set((cards || []).map(d => d.category))])
-    const { data: m, error: mErr } = await supabase.from('flashcard_mastery').select('*').eq('user_id', userId)
-    const mm = {}; if (!mErr) (m || []).forEach(r => mm[r.flashcard_id] = r); setMasteryMap(mm)
+    try {
+      const { data: cards } = await supabase.from('flashcards').select('*').order('sort_order')
+      setAllCards(cards || []); setCats([...new Set((cards || []).map(d => d.category))])
+    } catch { setAllCards([]); setCats([]) }
+    try {
+      const { data: m } = await supabase.from('flashcard_mastery').select('*').eq('user_id', userId)
+      const mm = {}; (m || []).forEach(r => { if (r && r.flashcard_id) mm[r.flashcard_id] = r }); setMasteryMap(mm)
+    } catch { setMasteryMap({}) }
   }, [userId])
 
   // Dark mode
@@ -500,28 +504,31 @@ function FlashcardsPage({ userId }) {
   }
 
   const markCard = async (known) => {
-    const card = deck[idx]
-    const existing = masteryMap[card.id]
-    const intervals = [1, 3, 7, 14, 30]
+    try {
+      const card = deck[idx]
+      if (!card) return
+      const existing = masteryMap[card.id]
+      const intervals = [1, 3, 7, 14, 30]
 
-    if (known) {
-      setSessionKnown(p => p + 1)
-      const curInterval = existing?.interval_days || 0
-      const curIdx = intervals.indexOf(curInterval)
-      const nextInterval = intervals[Math.min(curIdx + 1, intervals.length - 1)] || intervals[0]
-      const nextDate = new Date(Date.now() + nextInterval * 86400000).toISOString().split('T')[0]
-      const newData = { user_id: userId, flashcard_id: card.id, mastered: true, interval_days: nextInterval, next_review: nextDate, review_count: (existing?.review_count || 0) + 1 }
-      setMasteryMap(p => ({ ...p, [card.id]: newData }))
-      try { await supabase.from('flashcard_mastery').upsert(newData, { onConflict: 'user_id,flashcard_id' }) } catch {}
-    } else {
-      const nextDate = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-      const newData = { user_id: userId, flashcard_id: card.id, mastered: false, interval_days: 1, next_review: nextDate, review_count: (existing?.review_count || 0) + 1 }
-      setMasteryMap(p => ({ ...p, [card.id]: newData }))
-      try { await supabase.from('flashcard_mastery').upsert(newData, { onConflict: 'user_id,flashcard_id' }) } catch {}
-      setDeck(p => [...p, card])
-    }
-    if (idx + 1 >= deck.length && known) setDone(true)
-    else { setIdx(p => p + 1); setFlipped(false) }
+      if (known) {
+        setSessionKnown(p => p + 1)
+        const curInterval = existing?.interval_days || 0
+        const curIdx = intervals.indexOf(curInterval)
+        const nextInterval = intervals[Math.min(curIdx + 1, intervals.length - 1)] || 1
+        const nextDate = new Date(Date.now() + nextInterval * 86400000).toISOString().split('T')[0]
+        const newData = { user_id: userId, flashcard_id: card.id, mastered: true, interval_days: nextInterval, next_review: nextDate, review_count: (existing?.review_count || 0) + 1 }
+        setMasteryMap(p => ({ ...p, [card.id]: newData }))
+        try { await supabase.from('flashcard_mastery').upsert(newData, { onConflict: 'user_id,flashcard_id' }) } catch {}
+      } else {
+        const nextDate = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+        const newData = { user_id: userId, flashcard_id: card.id, mastered: false, interval_days: 1, next_review: nextDate, review_count: (existing?.review_count || 0) + 1 }
+        setMasteryMap(p => ({ ...p, [card.id]: newData }))
+        try { await supabase.from('flashcard_mastery').upsert(newData, { onConflict: 'user_id,flashcard_id' }) } catch {}
+        setDeck(p => [...p, card])
+      }
+      if (idx + 1 >= deck.length && known) setDone(true)
+      else { setIdx(p => p + 1); setFlipped(false) }
+    } catch (e) { console.error('Flashcard error:', e); setIdx(p => p + 1); setFlipped(false) }
   }
 
   const getNextReviewLabel = card => {
@@ -577,7 +584,7 @@ function FlashcardsPage({ userId }) {
     const pct = deck.length > 0 ? Math.round((sessionKnown / deck.length) * 100) : 0
     return (
       <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center', padding: '48px 0' }}>
-        <div style={{ fontSize: 56, marginBottom: 12 }}>{pct >= 80 ? '\uD83C\uDF89' : pct >= 50 ? '\uD83D\uDCAA' : '\uD83D\uDCDA'}</div>
+        <div style={{ fontSize: 56, marginBottom: 12 }}>{pct >= 80 ? '🎉' : pct >= 50 ? '💪' : '📚'}</div>
         <div style={{ fontSize: 44, fontWeight: 900, color: pct >= 80 ? 'var(--green)' : 'var(--indigo)' }}>{pct}%</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-sec)', marginTop: 4 }}>de bonnes reponses</div>
         <div style={{ fontSize: 15, color: 'var(--indigo)', fontWeight: 700, marginTop: 12 }}>Total maitrise : {masteredCount}/{allCards.length}</div>
