@@ -53,12 +53,6 @@ function ProgressBar({ value, max, height = 8 }) {
   return <div style={{ background: 'var(--border)', borderRadius: 20, height, overflow: 'hidden', width: '100%' }}><div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--indigo), var(--indigo-dark))', borderRadius: 20, transition: 'width 0.5s' }} /></div>
 }
 function Modal({ title, children, onClose }) { return <div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2 className="modal-title">{title}</h2><div onClick={onClose} style={{ cursor: 'pointer', color: 'var(--text-sec)' }}>{IC.close}</div></div>{children}</div></div> }
-
-function Confetti({ active }) {
-  if (!active) return null
-  const colors = ['#6366F1','#22C55E','#F59E0B','#EF4444','#8B5CF6','#F97316','#EC4899']
-  return <div className="confetti-container">{Array.from({length:50}).map((_,i) => <div key={i} className="confetti-piece" style={{ left: Math.random()*100+'%', background: colors[i%colors.length], animationDelay: Math.random()*2+'s', animationDuration: (2+Math.random()*2)+'s', width: 6+Math.random()*8, height: 6+Math.random()*8, borderRadius: Math.random()>0.5 ? '50%' : '2px' }} />)}</div>
-}
 function Toast({ message }) { return <div className="toast">{IC.check} {message}</div> }
 function getVideoEmbed(url) {
   if (!url) return null
@@ -87,7 +81,7 @@ function LoginPage({ onLogin }) {
 }
 
 // ═══ SIDEBAR WITH TREE ═══
-function CourseSidebar({ sections, completedVideos, completedChapters, currentPage, setPage, selectedVideo, onSelectVideo, onLogout, mobileOpen, setMobileOpen, myProf, darkMode, setDarkMode }) {
+function CourseSidebar({ sections, completedVideos, completedChapters, currentPage, setPage, selectedVideo, onSelectVideo, onLogout, mobileOpen, setMobileOpen, myProf }) {
   const [openSections, setOpenSections] = useState(new Set())
   const [openChapters, setOpenChapters] = useState(new Set())
   const toggleSec = id => setOpenSections(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -173,13 +167,6 @@ function CourseSidebar({ sections, completedVideos, completedChapters, currentPa
           <div style={navStyle(currentPage === 'games')} onClick={() => { setPage('games'); setMobileOpen(false) }}>{IC.game} <span>Entraînement</span></div>
         </div>
 
-        {/* Dark mode toggle */}
-        <div style={{ padding: '4px 0' }}>
-          <div onClick={() => setDarkMode(!darkMode)} style={navStyle(false)}>
-            <span style={{ fontSize: 16 }}>{darkMode ? '☀️' : '🌙'}</span>
-            <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
-          </div>
-        </div>
         {/* Contact prof */}
         {myProf && <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Ton professeur</div>
@@ -463,194 +450,173 @@ function ProgressPage({ sections, completedChapters, completedVideos, xp, streak
 
 
 
-// ═══ FLASHCARDS ═══
+// ═══ FLASHCARDS (spaced repetition) ═══
 function FlashcardsPage({ userId }) {
-  const [cards, setCards] = useState([])
-  const [mastery, setMastery] = useState({})
-  const [mode, setMode] = useState(null)
-  const [deck, setDeck] = useState([])
-  const [idx, setIdx] = useState(0)
-  const [flipped, setFlipped] = useState(false)
-  const [known, setKnown] = useState(0)
-  const [finished, setFinished] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [allCards, setAllCards] = useState([]); const [masteryMap, setMasteryMap] = useState({}); const [cats, setCats] = useState([])
+  const [mode, setMode] = useState(null); const [deck, setDeck] = useState([]); const [idx, setIdx] = useState(0); const [flipped, setFlipped] = useState(false)
+  const [sessionKnown, setSessionKnown] = useState(0); const [done, setDone] = useState(false)
 
-  useEffect(function() {
-    async function load() {
-      try {
-        var cRes = await supabase.from('flashcards').select('*').order('sort_order')
-        var cData = cRes.data || []
-        setCards(cData)
-      } catch(e) { console.error(e); setCards([]) }
-      try {
-        var mRes = await supabase.from('flashcard_mastery').select('flashcard_id, mastered, interval_days, next_review').eq('user_id', userId)
-        var mData = mRes.data || []
-        var m = {}
-        for (var i = 0; i < mData.length; i++) { m[mData[i].flashcard_id] = mData[i] }
-        setMastery(m)
-      } catch(e) { console.error(e); setMastery({}) }
-      setLoading(false)
-    }
-    load()
+  const loadData = useCallback(async () => {
+    const { data: cards } = await supabase.from('flashcards').select('*').order('sort_order')
+    setAllCards(cards || []); setCats([...new Set((cards || []).map(d => d.category))])
+    const { data: m } = await supabase.from('flashcard_mastery').select('*').eq('user_id', userId)
+    const mm = {}; (m || []).forEach(r => mm[r.flashcard_id] = r); setMasteryMap(mm)
   }, [userId])
 
-  if (loading) return React.createElement('div', {style:{textAlign:'center',padding:60,color:'var(--text-sec)'}}, 'Chargement...')
+  useEffect(() => { loadData() }, [loadData])
 
-  var today = new Date().toISOString().split('T')[0]
-  var categories = []
-  var seen = {}
-  for (var i = 0; i < cards.length; i++) {
-    if (!seen[cards[i].category]) { categories.push(cards[i].category); seen[cards[i].category] = true }
+  const today = new Date().toISOString().split('T')[0]
+  const isDue = card => { const m = masteryMap[card.id]; if (!m) return true; if (!m.mastered) return true; if (!m.next_review) return true; return m.next_review <= today }
+  const dueCards = allCards.filter(isDue)
+  const masteredCount = allCards.filter(c => masteryMap[c.id]?.mastered).length
+  const reviewingCount = allCards.filter(c => masteryMap[c.id] && !masteryMap[c.id].mastered).length
+  const newCount = allCards.filter(c => !masteryMap[c.id]).length
+
+  const startReview = () => {
+    const cards = [...dueCards].sort(() => Math.random() - 0.5)
+    setDeck(cards); setIdx(0); setFlipped(false); setSessionKnown(0); setDone(false); setMode('review')
   }
 
-  var masteredCount = 0
-  for (var i = 0; i < cards.length; i++) {
-    if (mastery[cards[i].id] && mastery[cards[i].id].mastered) masteredCount++
+  const startAll = (cat) => {
+    let cards = cat ? allCards.filter(c => c.category === cat) : [...allCards]
+    cards = cards.sort(() => Math.random() - 0.5)
+    setDeck(cards); setIdx(0); setFlipped(false); setSessionKnown(0); setDone(false); setMode('review')
   }
 
-  var dueCount = 0
-  for (var i = 0; i < cards.length; i++) {
-    var m = mastery[cards[i].id]
-    if (!m || !m.mastered || !m.next_review || m.next_review <= today) dueCount++
-  }
+  const markCard = async (known) => {
+    const card = deck[idx]
+    const existing = masteryMap[card.id]
+    const intervals = [1, 3, 7, 14, 30]
 
-  function startSession(cat) {
-    var d = []
-    for (var i = 0; i < cards.length; i++) {
-      if (!cat || cards[i].category === cat) d.push(cards[i])
-    }
-    // shuffle
-    for (var i = d.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1))
-      var tmp = d[i]; d[i] = d[j]; d[j] = tmp
-    }
-    setDeck(d); setIdx(0); setFlipped(false); setKnown(0); setFinished(false); setMode('review')
-  }
-
-  function startDue() {
-    var d = []
-    for (var i = 0; i < cards.length; i++) {
-      var m = mastery[cards[i].id]
-      if (!m || !m.mastered || !m.next_review || m.next_review <= today) d.push(cards[i])
-    }
-    for (var i = d.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1))
-      var tmp = d[i]; d[i] = d[j]; d[j] = tmp
-    }
-    setDeck(d); setIdx(0); setFlipped(false); setKnown(0); setFinished(false); setMode('review')
-  }
-
-  async function markCard(isKnown) {
-    var card = deck[idx]
-    if (!card) return
-    var intervals = [1, 3, 7, 14, 30]
-    var existing = mastery[card.id]
-
-    if (isKnown) {
-      setKnown(function(p) { return p + 1 })
-      var ci = existing ? intervals.indexOf(existing.interval_days || 0) : -1
-      var ni = intervals[Math.min(ci + 1, intervals.length - 1)] || 1
-      var nd = new Date(Date.now() + ni * 86400000).toISOString().split('T')[0]
-      var newM = Object.assign({}, mastery)
-      newM[card.id] = { mastered: true, interval_days: ni, next_review: nd }
-      setMastery(newM)
-      try { await supabase.from('flashcard_mastery').upsert({ user_id: userId, flashcard_id: card.id, mastered: true, interval_days: ni, next_review: nd, review_count: (existing && existing.review_count || 0) + 1 }) } catch(e) { console.error(e) }
-      if (idx + 1 >= deck.length) { setFinished(true); return }
+    if (known) {
+      setSessionKnown(p => p + 1)
+      const curInterval = existing?.interval_days || 0
+      const curIdx = intervals.indexOf(curInterval)
+      const nextInterval = intervals[Math.min(curIdx + 1, intervals.length - 1)] || intervals[0]
+      const nextDate = new Date(Date.now() + nextInterval * 86400000).toISOString().split('T')[0]
+      const newData = { user_id: userId, flashcard_id: card.id, mastered: true, interval_days: nextInterval, next_review: nextDate, review_count: (existing?.review_count || 0) + 1 }
+      setMasteryMap(p => ({ ...p, [card.id]: newData }))
+      try { await supabase.from('flashcard_mastery').upsert(newData) } catch {}
     } else {
-      var nd2 = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-      var newM2 = Object.assign({}, mastery)
-      newM2[card.id] = { mastered: false, interval_days: 1, next_review: nd2 }
-      setMastery(newM2)
-      try { await supabase.from('flashcard_mastery').upsert({ user_id: userId, flashcard_id: card.id, mastered: false, interval_days: 1, next_review: nd2, review_count: (existing && existing.review_count || 0) + 1 }) } catch(e) { console.error(e) }
-      var newDeck = deck.slice(); newDeck.push(card); setDeck(newDeck)
+      const nextDate = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+      const newData = { user_id: userId, flashcard_id: card.id, mastered: false, interval_days: 1, next_review: nextDate, review_count: (existing?.review_count || 0) + 1 }
+      setMasteryMap(p => ({ ...p, [card.id]: newData }))
+      try { await supabase.from('flashcard_mastery').upsert(newData) } catch {}
+      setDeck(p => [...p, card])
     }
-    setIdx(function(p) { return p + 1 }); setFlipped(false)
+    if (idx + 1 >= deck.length && known) setDone(true)
+    else { setIdx(p => p + 1); setFlipped(false) }
   }
 
-  // HOME
+  const getNextReviewLabel = card => {
+    const m = masteryMap[card.id]
+    if (!m || !m.interval_days) return null
+    return m.interval_days >= 30 ? '30j' : m.interval_days >= 14 ? '14j' : m.interval_days >= 7 ? '7j' : m.interval_days >= 3 ? '3j' : '1j'
+  }
+
+  // ═══ HOME ═══
   if (!mode) return (
     <div style={{ maxWidth: 500, margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 900 }}>Flashcards</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: -0.5 }}>Flashcards</h1>
         <p style={{ fontSize: 16, color: 'var(--text-sec)' }}>Revise tes formules chaque jour</p>
       </div>
-      <div style={{ background: 'linear-gradient(135deg, var(--indigo), var(--indigo-dark))', borderRadius: 18, padding: '28px 24px', textAlign: 'center', color: 'white', marginBottom: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>A reviser aujourd hui</div>
-        <div style={{ fontSize: 52, fontWeight: 900, marginBottom: 4 }}>{dueCount}</div>
-        <div style={{ fontSize: 15, opacity: 0.8, marginBottom: 18 }}>carte{dueCount !== 1 ? 's' : ''} en attente</div>
-        <button onClick={function() { startDue() }} disabled={dueCount === 0} style={{ padding: '14px 44px', borderRadius: 14, background: 'white', color: 'var(--indigo-dark)', border: 'none', fontSize: 16, fontWeight: 800, cursor: dueCount > 0 ? 'pointer' : 'default', fontFamily: 'var(--font)', opacity: dueCount > 0 ? 1 : 0.5 }}>{dueCount > 0 ? 'Commencer' : 'Tout revise !'}</button>
+      {/* Daily review CTA */}
+      <div style={{ background: 'linear-gradient(135deg, var(--indigo), var(--indigo-dark))', borderRadius: 18, padding: '28px 24px', textAlign: 'center', color: 'white', marginBottom: 20, boxShadow: '0 8px 24px rgba(99,102,241,0.25)' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>A reviser aujourd&apos;hui</div>
+        <div style={{ fontSize: 52, fontWeight: 900, marginBottom: 4 }}>{dueCards.length}</div>
+        <div style={{ fontSize: 15, opacity: 0.8, marginBottom: 18 }}>carte{dueCards.length > 1 ? 's' : ''} en attente</div>
+        <button onClick={startReview} disabled={!dueCards.length} style={{ padding: '14px 44px', borderRadius: 14, background: 'white', color: 'var(--indigo-dark)', border: 'none', fontSize: 16, fontWeight: 800, cursor: dueCards.length ? 'pointer' : 'default', fontFamily: 'var(--font)', opacity: dueCards.length ? 1 : 0.5 }}>
+          {dueCards.length ? 'Commencer' : 'Tout est revise !'}
+        </button>
       </div>
+      {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
-        <div style={{ background: 'var(--green-bg)', borderRadius: 14, padding: '14px 10px', textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 900, color: 'var(--green-dark)' }}>{masteredCount}</div><div style={{ fontSize: 12, color: 'var(--green-dark)', fontWeight: 600 }}>maitrisees</div></div>
-        <div style={{ background: 'var(--orange-bg)', borderRadius: 14, padding: '14px 10px', textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 900, color: '#C2410C' }}>{cards.length - masteredCount}</div><div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600 }}>a revoir</div></div>
-        <div style={{ background: 'var(--indigo-bg)', borderRadius: 14, padding: '14px 10px', textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 900, color: 'var(--indigo-dark)' }}>{cards.length}</div><div style={{ fontSize: 12, color: 'var(--indigo-dark)', fontWeight: 600 }}>total</div></div>
+        <div style={{ background: 'var(--green-bg)', borderRadius: 14, padding: '14px 10px', textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 900, color: 'var(--green-dark)' }}>{masteredCount}</div><div style={{ fontSize: 12, color: 'var(--green-dark)', fontWeight: 600, marginTop: 2 }}>maitrisees</div></div>
+        <div style={{ background: 'var(--orange-bg)', borderRadius: 14, padding: '14px 10px', textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 900, color: '#C2410C' }}>{reviewingCount}</div><div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>a revoir</div></div>
+        <div style={{ background: 'var(--indigo-bg)', borderRadius: 14, padding: '14px 10px', textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 900, color: 'var(--indigo-dark)' }}>{newCount}</div><div style={{ fontSize: 12, color: 'var(--indigo-dark)', fontWeight: 600, marginTop: 2 }}>nouvelles</div></div>
       </div>
+      {/* Progress */}
       <div className="card" style={{ padding: '14px 18px', marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-sec)' }}>Progression</span><span style={{ fontSize: 14, fontWeight: 800, color: 'var(--indigo)' }}>{masteredCount}/{cards.length}</span></div>
-        <ProgressBar value={masteredCount} max={cards.length} height={8} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-sec)' }}>Progression</span><span style={{ fontSize: 14, fontWeight: 800, color: 'var(--indigo)' }}>{masteredCount}/{allCards.length}</span></div>
+        <ProgressBar value={masteredCount} max={allCards.length} height={8} />
       </div>
+      {/* By category */}
       <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 10 }}>Par categorie</div>
-      {categories.map(function(cat) {
-        var total = cards.filter(function(c) { return c.category === cat }).length
-        var mast = cards.filter(function(c) { return c.category === cat && mastery[c.id] && mastery[c.id].mastered }).length
+      {cats.map(cat => {
+        const total = allCards.filter(c => c.category === cat).length
+        const mastered = allCards.filter(c => c.category === cat && masteryMap[c.id]?.mastered).length
         return (
-          <div key={cat} onClick={function() { startSession(cat) }} className="card" style={{ padding: '14px 18px', marginBottom: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div key={cat} onClick={() => startAll(cat)} className="card" style={{ padding: '14px 18px', marginBottom: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div><div style={{ fontSize: 15, fontWeight: 700 }}>{cat}</div><div style={{ fontSize: 13, color: 'var(--text-sec)' }}>{total} formules</div></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 50 }}><ProgressBar value={mast} max={total} height={5} /></div><span style={{ fontSize: 14, fontWeight: 700, color: mast === total && total > 0 ? 'var(--green)' : 'var(--indigo)' }}>{mast}/{total}</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 50 }}><ProgressBar value={mastered} max={total} height={5} /></div><span style={{ fontSize: 14, fontWeight: 700, color: mastered === total ? 'var(--green)' : 'var(--indigo)' }}>{mastered}/{total}</span></div>
           </div>
         )
       })}
     </div>
   )
 
-  // FINISHED
-  if (finished) {
-    var pct = deck.length > 0 ? Math.round((known / deck.length) * 100) : 0
+  // ═══ DONE ═══
+  if (done) {
+    const pct = deck.length > 0 ? Math.round((sessionKnown / deck.length) * 100) : 0
     return (
       <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center', padding: '48px 0' }}>
-        <div style={{ fontSize: 56, marginBottom: 12 }}>{pct >= 80 ? '🎉' : pct >= 50 ? '💪' : '📚'}</div>
+        <div style={{ fontSize: 56, marginBottom: 12 }}>{pct >= 80 ? '\uD83C\uDF89' : pct >= 50 ? '\uD83D\uDCAA' : '\uD83D\uDCDA'}</div>
         <div style={{ fontSize: 44, fontWeight: 900, color: pct >= 80 ? 'var(--green)' : 'var(--indigo)' }}>{pct}%</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-sec)', marginTop: 4 }}>de bonnes reponses</div>
-        <div style={{ fontSize: 15, color: 'var(--indigo)', fontWeight: 700, marginTop: 12 }}>Total maitrise : {masteredCount}/{cards.length}</div>
+        <div style={{ fontSize: 15, color: 'var(--indigo)', fontWeight: 700, marginTop: 12 }}>Total maitrise : {masteredCount}/{allCards.length}</div>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 28 }}>
-          <button className="btn btn-primary" onClick={function() { startDue() }}>Continuer</button>
-          <button className="btn btn-secondary" onClick={function() { setMode(null) }}>Retour</button>
+          <button className="btn btn-primary" onClick={startReview}>Continuer</button>
+          <button className="btn btn-secondary" onClick={() => setMode(null)}>Retour</button>
         </div>
       </div>
     )
   }
 
-  // REVIEW
-  var card = deck[idx]
-  if (!card) { setFinished(true); return null }
-  var existing = mastery[card.id]
-  var intervals = [1, 3, 7, 14, 30]
-  var ci2 = existing ? intervals.indexOf(existing.interval_days || 0) : -1
-  var nextInt = intervals[Math.min(ci2 + 1, intervals.length - 1)] || 1
+  // ═══ REVIEW ═══
+  const card = deck[idx]; if (!card) return null
+  const curMastery = masteryMap[card.id]
+  const nextIfKnown = [1,3,7,14,30]
+  const curIdx = nextIfKnown.indexOf(curMastery?.interval_days || 0)
+  const nextInterval = nextIfKnown[Math.min(curIdx + 1, nextIfKnown.length - 1)] || 1
 
   return (
     <div style={{ maxWidth: 500, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <button className="btn btn-secondary btn-sm" onClick={function() { setMode(null) }}>Quitter</button>
+        <button className="btn btn-secondary btn-sm" onClick={() => setMode(null)}>{IC.arrowL} Quitter</button>
         <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-sec)' }}>{idx + 1} / {deck.length}</span>
-        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--green)' }}>{known} ok</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--green)' }}>{sessionKnown} ✓</span>
       </div>
-      <div style={{ background: 'var(--border)', borderRadius: 20, height: 5, marginBottom: 24, overflow: 'hidden' }}><div style={{ width: ((idx + 1) / deck.length * 100) + '%', height: '100%', background: 'var(--indigo)', borderRadius: 20, transition: 'width 0.3s' }} /></div>
-      <div onClick={function() { if (!flipped) setFlipped(true) }} style={{ minHeight: 240, background: flipped ? 'linear-gradient(135deg, var(--indigo), var(--indigo-dark))' : 'var(--card)', border: flipped ? 'none' : '2px solid var(--border)', borderRadius: 22, padding: '36px 28px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', marginBottom: 20, boxShadow: flipped ? '0 4px 20px rgba(99,102,241,0.25)' : '0 4px 20px rgba(0,0,0,0.05)' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: flipped ? 'rgba(255,255,255,0.5)' : 'var(--indigo)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>{flipped ? 'Reponse' : card.category}</div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: flipped ? 'white' : 'var(--text)', lineHeight: 1.4 }}>{flipped ? card.back : card.front}</div>
-        {!flipped && <div style={{ marginTop: 20, fontSize: 14, color: 'var(--text-light)' }}>Clique pour retourner</div>}
+      <div style={{ background: 'var(--border)', borderRadius: 20, height: 5, marginBottom: 24, overflow: 'hidden' }}><div style={{ width: `${((idx + 1) / deck.length) * 100}%`, height: '100%', background: 'var(--indigo)', borderRadius: 20, transition: 'width 0.3s' }} /></div>
+      {/* Card with 3D flip */}
+      <div onClick={() => !flipped && setFlipped(true)} style={{ perspective: 800, marginBottom: 20 }}>
+        <div style={{ position: 'relative', minHeight: 240, transition: 'transform 0.5s', transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0)' }}>
+          {/* Front */}
+          <div style={{ position: 'absolute', width: '100%', minHeight: 240, backfaceVisibility: 'hidden', background: 'var(--card)', border: '2px solid var(--border)', borderRadius: 22, padding: '36px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--indigo)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>{card.category}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.4 }}>{card.front}</div>
+            <div style={{ marginTop: 20, fontSize: 14, color: 'var(--text-light)' }}>Clique pour retourner</div>
+          </div>
+          {/* Back */}
+          <div style={{ position: 'absolute', width: '100%', minHeight: 240, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', background: 'linear-gradient(135deg, var(--indigo), var(--indigo-dark))', borderRadius: 22, padding: '36px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', boxShadow: '0 4px 20px rgba(99,102,241,0.25)' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Reponse</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1.5 }}>{card.back}</div>
+          </div>
+        </div>
       </div>
+      {/* Spacer for absolute cards */}
+      <div style={{ height: 240, marginBottom: 20 }} />
+      {/* Action buttons */}
       {flipped && <div style={{ display: 'flex', gap: 12 }}>
-        <button onClick={function() { markCard(false) }} style={{ flex: 1, padding: 18, borderRadius: 16, border: '2px solid var(--red-light)', background: 'var(--red-bg)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'center' }}>
+        <button onClick={() => markCard(false)} style={{ flex: 1, padding: 18, borderRadius: 16, border: '2px solid var(--red-light)', background: 'var(--red-bg)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'center' }}>
           <div style={{ fontSize: 20, marginBottom: 4 }}>🔄</div>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--red)' }}>A revoir</div>
           <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 2 }}>Revient demain</div>
         </button>
-        <button onClick={function() { markCard(true) }} style={{ flex: 1, padding: 18, borderRadius: 16, border: '2px solid var(--green-light)', background: 'var(--green-bg)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'center' }}>
+        <button onClick={() => markCard(true)} style={{ flex: 1, padding: 18, borderRadius: 16, border: '2px solid var(--green-light)', background: 'var(--green-bg)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'center' }}>
           <div style={{ fontSize: 20, marginBottom: 4 }}>✅</div>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--green-dark)' }}>Je sais</div>
-          <div style={{ fontSize: 12, color: 'var(--green)', marginTop: 2 }}>Revient dans {nextInt}j</div>
+          <div style={{ fontSize: 12, color: 'var(--green)', marginTop: 2 }}>Revient dans {nextInterval}j</div>
         </button>
       </div>}
     </div>
@@ -658,7 +624,7 @@ function FlashcardsPage({ userId }) {
 }
 
 // ═══ EXAMEN BLANC (Roadmap gamifiee + lockout) ═══
-function ExamPage({ userId, earnXP, onCelebrate }) {
+function ExamPage({ userId, earnXP }) {
   const [exams, setExams] = useState([]); const [results, setResults] = useState([]); const [activeExam, setActiveExam] = useState(null); const [questions, setQuestions] = useState([]); const [qIdx, setQIdx] = useState(0); const [answers, setAnswers] = useState({}); const [submitted, setSubmitted] = useState(false); const [timer, setTimer] = useState(0)
 
   useEffect(() => { (async () => {
@@ -684,14 +650,12 @@ function ExamPage({ userId, earnXP, onCelebrate }) {
 
   const startExam = async name => { const { data } = await supabase.from('quiz_questions').select('*').eq('exam_name', name).order('sort_order'); setQuestions(data || []); setActiveExam(name); setQIdx(0); setAnswers({}); setSubmitted(false); setTimer(0) }
   useEffect(() => { if (!activeExam || submitted) return; const t = setInterval(() => setTimer(s => s + 1), 1000); return () => clearInterval(t) }, [activeExam, submitted])
-  const submit = async () => { setSubmitted(true); let sc = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) sc++ }); try { await supabase.from('quiz_results').insert({ user_id: userId, exam_name: activeExam, score: sc, total: questions.length }); await earnXP(userId, 'game_played'); if (sc >= 8 && onCelebrate) onCelebrate(); const { data: r } = await supabase.from('quiz_results').select('*').eq('user_id', userId).order('completed_at', { ascending: false }); setResults(r || []) } catch {} }
+  const submit = async () => { setSubmitted(true); let sc = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) sc++ }); try { await supabase.from('quiz_results').insert({ user_id: userId, exam_name: activeExam, score: sc, total: questions.length }); await earnXP(userId, 'game_played'); const { data: r } = await supabase.from('quiz_results').select('*').eq('user_id', userId).order('completed_at', { ascending: false }); setResults(r || []) } catch {} }
   const fmtT = s => Math.floor(s/60) + ':' + String(s%60).padStart(2,'0')
 
   // ROADMAP
   if (!activeExam) return (
-    <div style={{ maxWidth: 580, margin: '0 auto' }}>
-      {/* Background container */}
-      <div style={{ background: 'linear-gradient(180deg, var(--indigo-bg) 0%, transparent 40%)', borderRadius: 24, padding: '28px 24px', marginTop: -12 }}>
+    <div style={{ maxWidth: 520, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--indigo)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>Le parcours du champion</div>
@@ -768,7 +732,6 @@ function ExamPage({ userId, earnXP, onCelebrate }) {
         </div>
       </div>
 
-      </div>
       {done === exams.length && <div style={{ textAlign: 'center', marginTop: 28, padding: '24px 20px', background: 'linear-gradient(135deg, #FEF3C7, #FFFBEB)', borderRadius: 18, border: '2px solid var(--gold-light)' }}><div style={{ fontSize: 48, marginBottom: 8 }}>🏆</div><div style={{ fontSize: 22, fontWeight: 900, color: '#92400E' }}>Champion ! Tous les niveaux valides !</div><div style={{ fontSize: 15, color: '#B45309', marginTop: 4 }}>Tu es pret pour le brevet !</div></div>}
     </div>
   )
@@ -1045,12 +1008,11 @@ function AdminProgress({ students, sections }) {
 
 // ═══ MAIN APP ═══
 export default function Home() {
-  const [user, setUser] = useState(null); const [page, setPage] = useState('welcome'); const [toast, setToast] = useState(null); const [darkMode, setDarkMode] = useState(false); const [confetti, setConfetti] = useState(false); const [loading, setLoading] = useState(true); const [mobileOpen, setMobileOpen] = useState(false)
+  const [user, setUser] = useState(null); const [page, setPage] = useState('welcome'); const [toast, setToast] = useState(null); const [loading, setLoading] = useState(true); const [mobileOpen, setMobileOpen] = useState(false)
   const [students, setStudents] = useState([]); const [profs, setProfs] = useState([]); const [allSections, setAllSections] = useState([]); const [videos, setVideos] = useState([]); const [settings, setSettings] = useState({})
   const [completedVideos, setCompletedVideos] = useState([]); const [completedChapters, setCompletedChapters] = useState([]); const [streak, setStreak] = useState({}); const [xp, setXp] = useState(0); const [xpPopup, setXpPopup] = useState(null)
   const [selectedVideo, setSelectedVideo] = useState(null); const [selectedChapter, setSelectedChapter] = useState(null); const [viewingPdf, setViewingPdf] = useState(null)
   const [totalTime, setTotalTime] = useState(0)
-  const triggerConfetti = useCallback(() => { setConfetti(true); setTimeout(() => setConfetti(false), 3500) }, [])
   const showToast = useCallback(m => { setToast(m); setTimeout(() => setToast(null), 2500) }, [])
   const formSections = useMemo(() => allSections.filter(s => s.type === 'formation'), [allSections])
   const totalChapters = useMemo(() => formSections.reduce((a, s) => a + (s.chapters?.length || 0), 0), [formSections])
@@ -1085,9 +1047,6 @@ export default function Home() {
   }, [earnXP])
 
   useEffect(() => { if (!user || user.role === 'admin') return; const ping = async () => { const today = new Date().toISOString().split('T')[0]; try { const { data } = await supabase.from('time_tracking').select('*').eq('user_id', user.id).eq('session_date', today).single(); if (data) await supabase.from('time_tracking').update({ total_seconds: data.total_seconds + 30, last_ping: new Date().toISOString() }).eq('id', data.id); else await supabase.from('time_tracking').insert({ user_id: user.id, session_date: today, total_seconds: 30 }) } catch {} }; const i = setInterval(ping, 30000); ping(); return () => clearInterval(i) }, [user])
-  // Dark mode
-  useEffect(() => { const saved = typeof window !== 'undefined' && localStorage.getItem('bb-dark'); if (saved === 'true') setDarkMode(true) }, [])
-  useEffect(() => { if (typeof document !== 'undefined') { document.documentElement.classList.toggle('dark', darkMode); localStorage.setItem('bb-dark', darkMode) } }, [darkMode])
   useEffect(() => { loadData() }, [loadData])
 
   const login = async (username, password, setErr) => { const { data, error } = await supabase.from('users').select('*').eq('username', username).eq('password', password).single(); if (error || !data) { setErr('Identifiant ou mot de passe incorrect'); return }; if (!data.active && data.role !== 'admin') { setErr('Compte désactivé'); return }; setUser(data); if (data.role === 'admin') setPage('admin-dash'); else { setPage('welcome'); await loadStudentData(data.id); await updateStreak(data.id) } }
@@ -1127,7 +1086,6 @@ export default function Home() {
   const goPrev = () => { if (vidIdx > 0) { const pv = allVidsFlat[vidIdx - 1]; const pc = formSections.flatMap(s => s.chapters||[]).find(c => (c.videos||[]).some(v => v.id === pv.id)); onSelectVideo(pv, pc) } }
   const handleContinue = () => { setPage('welcome'); if (allVidsFlat.length > 0) { const firstUnwatched = allVidsFlat.find(v => !completedVideos.includes(v.id)); if (firstUnwatched) { const ch = formSections.flatMap(s => s.chapters||[]).find(c => (c.videos||[]).some(v => v.id === firstUnwatched.id)); onSelectVideo(firstUnwatched, ch) } else { setPage('welcome') } } }
 
-  const isDemo = user?.username === 'demo'
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-sec)' }}>Chargement...</div>
   if (!user) return <LoginPage onLogin={login} />
   const isAdmin = user.role === 'admin'
@@ -1162,7 +1120,7 @@ export default function Home() {
 
   return (
     <div className="app-layout">
-      <CourseSidebar sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} currentPage={page} setPage={p => { setPage(p); setSelectedVideo(null); setViewingPdf(null) }} selectedVideo={selectedVideo} onSelectVideo={onSelectVideo} onLogout={logout} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} myProf={myProf} darkMode={darkMode} setDarkMode={setDarkMode} />
+      <CourseSidebar sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} currentPage={page} setPage={p => { setPage(p); setSelectedVideo(null); setViewingPdf(null) }} selectedVideo={selectedVideo} onSelectVideo={onSelectVideo} onLogout={logout} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} myProf={myProf} />
       <div className="main-content">
         {page === 'welcome' && <WelcomePage completedChapters={completedChapters} totalChapters={totalChapters} completedVideos={completedVideos.length} totalVideos={totalVideos} streak={streak} xp={xp} sections={formSections} onContinue={handleContinue} userName={user.first_name} totalTime={totalTime} />}
         {page === 'video' && selectedVideo && <VideoPlayer video={selectedVideo} chapter={selectedChapter} isDone={completedVideos.includes(selectedVideo.id)} onToggle={() => toggleVideoComplete(selectedVideo.id)} onNext={goNext} onPrev={goPrev} hasNext={vidIdx < allVidsFlat.length - 1} hasPrev={vidIdx > 0} allVids={selectedChapter?.videos || []} completedVideos={completedVideos} onSelectVideo={onSelectVideo} onOpenPdf={onOpenPdf} />}
@@ -1170,12 +1128,10 @@ export default function Home() {
         {page === 'chapters' && <ChaptersPage sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} toggleChapterComplete={toggleChapterComplete} onSelectVideo={onSelectVideo} trackPdf={trackPdf} earnXP={earnXP} userId={user.id} />}
         {page === 'progress' && <ProgressPage sections={formSections} completedChapters={completedChapters} completedVideos={completedVideos} xp={xp} streak={streak} totalTime={totalTime} />}
         {page === 'flashcards' && <FlashcardsPage userId={user.id} />}
-        {page === 'exam' && <ExamPage userId={user.id} earnXP={earnXP} onCelebrate={triggerConfetti} />}
+        {page === 'exam' && <ExamPage userId={user.id} earnXP={earnXP} />}
         {page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
       </div>
       {toast && <Toast message={toast} />}
-      <Confetti active={confetti} />
-      {isDemo && <div className="demo-banner">Mode demo — tu vois un apercu de la plateforme<a href="https://wa.me/33XXXXXXXXX" target="_blank" rel="noreferrer">Rejoindre la formation</a></div>}
       {xpPopup && <div style={{ position: 'fixed', top: 80, right: 24, background: 'linear-gradient(135deg, #312E81, #1E1B4B)', color: '#A5B4FC', padding: '12px 20px', borderRadius: 14, fontSize: 14, fontWeight: 700, zIndex: 300, display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.3)', animation: 'toastIn 0.3s ease' }}>⚡ +{xpPopup.xp} XP — {xpPopup.label}</div>}
     </div>
   )
