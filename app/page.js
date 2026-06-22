@@ -457,10 +457,14 @@ function FlashcardsPage({ userId }) {
   const [sessionKnown, setSessionKnown] = useState(0); const [done, setDone] = useState(false)
 
   const loadData = useCallback(async () => {
-    const { data: cards } = await supabase.from('flashcards').select('*').order('sort_order')
-    setAllCards(cards || []); setCats([...new Set((cards || []).map(d => d.category))])
-    const { data: m } = await supabase.from('flashcard_mastery').select('*').eq('user_id', userId)
-    const mm = {}; (m || []).forEach(r => mm[r.flashcard_id] = r); setMasteryMap(mm)
+    try {
+      const { data: cards } = await supabase.from('flashcards').select('*').order('sort_order')
+      setAllCards(cards || []); setCats([...new Set((cards || []).map(d => d.category))])
+    } catch { setAllCards([]); setCats([]) }
+    try {
+      const { data: m } = await supabase.from('flashcard_mastery').select('*').eq('user_id', userId)
+      const mm = {}; (m || []).forEach(r => { if (r && r.flashcard_id) mm[r.flashcard_id] = r }); setMasteryMap(mm)
+    } catch { setMasteryMap({}) }
   }, [userId])
 
   useEffect(() => { loadData() }, [loadData])
@@ -827,23 +831,13 @@ function GamesPage({ userId, earnXP }) {
 function AdminStudentProfile({ student, sections, onBack }) {
   const [vidProg, setVidProg] = useState([]); const [chProg, setChProg] = useState([]); const [streakData, setStreakData] = useState({}); const [xpData, setXpData] = useState(0); const [timeData, setTimeData] = useState(0); const [flashData, setFlashData] = useState({ mastered: 0, total: 0 }); const [examData, setExamData] = useState([])
   useEffect(() => { (async () => {
-    const [vp, cp, st, xp, tt, fm, fc, qr] = await Promise.all([
-      supabase.from('video_progress').select('video_id').eq('user_id', student.id).eq('completed', true),
-      supabase.from('chapter_progress').select('chapter_id').eq('user_id', student.id).eq('completed', true),
-      supabase.from('student_streaks').select('*').eq('user_id', student.id).single(),
-      supabase.from('student_xp').select('total_xp').eq('user_id', student.id).single(),
-      supabase.from('time_tracking').select('total_seconds').eq('user_id', student.id),
-      supabase.from('flashcard_mastery').select('*').eq('user_id', student.id).eq('mastered', true),
-      supabase.from('flashcards').select('id'),
-      supabase.from('quiz_results').select('*').eq('user_id', student.id).order('completed_at', { ascending: false })
-    ])
-    setVidProg((vp.data || []).map(r => r.video_id))
-    setChProg((cp.data || []).map(r => r.chapter_id))
-    if (st.data) setStreakData(st.data)
-    if (xp.data) setXpData(xp.data.total_xp)
-    setTimeData((tt.data || []).reduce((a, t) => a + t.total_seconds, 0))
-    setFlashData({ mastered: (fm.data || []).length, total: (fc.data || []).length })
-    setExamData(qr.data || [])
+    try { const { data } = await supabase.from('video_progress').select('video_id').eq('user_id', student.id).eq('completed', true); setVidProg((data || []).map(r => r.video_id)) } catch { setVidProg([]) }
+    try { const { data } = await supabase.from('chapter_progress').select('chapter_id').eq('user_id', student.id).eq('completed', true); setChProg((data || []).map(r => r.chapter_id)) } catch { setChProg([]) }
+    try { const { data } = await supabase.from('student_streaks').select('*').eq('user_id', student.id).single(); if (data) setStreakData(data) } catch {}
+    try { const { data } = await supabase.from('student_xp').select('total_xp').eq('user_id', student.id).single(); if (data) setXpData(data.total_xp) } catch {}
+    try { const { data } = await supabase.from('time_tracking').select('total_seconds').eq('user_id', student.id); setTimeData((data || []).reduce((a, t) => a + t.total_seconds, 0)) } catch {}
+    try { const { data: fm } = await supabase.from('flashcard_mastery').select('*').eq('user_id', student.id).eq('mastered', true); const { data: fc } = await supabase.from('flashcards').select('id'); setFlashData({ mastered: (fm || []).length, total: (fc || []).length }) } catch { setFlashData({ mastered: 0, total: 0 }) }
+    try { const { data } = await supabase.from('quiz_results').select('*').eq('user_id', student.id).order('completed_at', { ascending: false }); setExamData(data || []) } catch { setExamData([]) }
   })() }, [student.id])
 
   const totalCh = sections.reduce((a, s) => a + (s.chapters?.length || 0), 0)
