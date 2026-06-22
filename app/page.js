@@ -472,8 +472,8 @@ function FlashcardsPage({ userId }) {
   const loadData = useCallback(async () => {
     const { data: cards } = await supabase.from('flashcards').select('*').order('sort_order')
     setAllCards(cards || []); setCats([...new Set((cards || []).map(d => d.category))])
-    const { data: m } = await supabase.from('flashcard_mastery').select('*').eq('user_id', userId)
-    const mm = {}; (m || []).forEach(r => mm[r.flashcard_id] = r); setMasteryMap(mm)
+    const { data: m, error: mErr } = await supabase.from('flashcard_mastery').select('*').eq('user_id', userId)
+    const mm = {}; if (!mErr) (m || []).forEach(r => mm[r.flashcard_id] = r); setMasteryMap(mm)
   }, [userId])
 
   // Dark mode
@@ -482,7 +482,7 @@ function FlashcardsPage({ userId }) {
   useEffect(() => { loadData() }, [loadData])
 
   const today = new Date().toISOString().split('T')[0]
-  const isDue = card => { const m = masteryMap[card.id]; if (!m) return true; if (!m.mastered) return true; if (!m.next_review) return true; return m.next_review <= today }
+  const isDue = card => { const m = masteryMap[card.id]; if (!m) return true; if (!m.mastered) return true; if (!m.next_review) return true; try { return m.next_review <= today } catch { return true } }
   const dueCards = allCards.filter(isDue)
   const masteredCount = allCards.filter(c => masteryMap[c.id]?.mastered).length
   const reviewingCount = allCards.filter(c => masteryMap[c.id] && !masteryMap[c.id].mastered).length
@@ -512,12 +512,12 @@ function FlashcardsPage({ userId }) {
       const nextDate = new Date(Date.now() + nextInterval * 86400000).toISOString().split('T')[0]
       const newData = { user_id: userId, flashcard_id: card.id, mastered: true, interval_days: nextInterval, next_review: nextDate, review_count: (existing?.review_count || 0) + 1 }
       setMasteryMap(p => ({ ...p, [card.id]: newData }))
-      try { await supabase.from('flashcard_mastery').upsert(newData) } catch {}
+      try { await supabase.from('flashcard_mastery').upsert(newData, { onConflict: 'user_id,flashcard_id' }) } catch {}
     } else {
       const nextDate = new Date(Date.now() + 86400000).toISOString().split('T')[0]
       const newData = { user_id: userId, flashcard_id: card.id, mastered: false, interval_days: 1, next_review: nextDate, review_count: (existing?.review_count || 0) + 1 }
       setMasteryMap(p => ({ ...p, [card.id]: newData }))
-      try { await supabase.from('flashcard_mastery').upsert(newData) } catch {}
+      try { await supabase.from('flashcard_mastery').upsert(newData, { onConflict: 'user_id,flashcard_id' }) } catch {}
       setDeck(p => [...p, card])
     }
     if (idx + 1 >= deck.length && known) setDone(true)
@@ -671,7 +671,9 @@ function ExamPage({ userId, earnXP, onCelebrate }) {
 
   // ROADMAP
   if (!activeExam) return (
-    <div style={{ maxWidth: 520, margin: '0 auto' }}>
+    <div style={{ maxWidth: 580, margin: '0 auto' }}>
+      {/* Background container */}
+      <div style={{ background: 'linear-gradient(180deg, var(--indigo-bg) 0%, transparent 40%)', borderRadius: 24, padding: '28px 24px', marginTop: -12 }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--indigo)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>Le parcours du champion</div>
@@ -748,6 +750,7 @@ function ExamPage({ userId, earnXP, onCelebrate }) {
         </div>
       </div>
 
+      </div>
       {done === exams.length && <div style={{ textAlign: 'center', marginTop: 28, padding: '24px 20px', background: 'linear-gradient(135deg, #FEF3C7, #FFFBEB)', borderRadius: 18, border: '2px solid var(--gold-light)' }}><div style={{ fontSize: 48, marginBottom: 8 }}>🏆</div><div style={{ fontSize: 22, fontWeight: 900, color: '#92400E' }}>Champion ! Tous les niveaux valides !</div><div style={{ fontSize: 15, color: '#B45309', marginTop: 4 }}>Tu es pret pour le brevet !</div></div>}
     </div>
   )
