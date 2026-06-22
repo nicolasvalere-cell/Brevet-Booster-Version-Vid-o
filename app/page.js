@@ -53,6 +53,12 @@ function ProgressBar({ value, max, height = 8 }) {
   return <div style={{ background: 'var(--border)', borderRadius: 20, height, overflow: 'hidden', width: '100%' }}><div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--indigo), var(--indigo-dark))', borderRadius: 20, transition: 'width 0.5s' }} /></div>
 }
 function Modal({ title, children, onClose }) { return <div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2 className="modal-title">{title}</h2><div onClick={onClose} style={{ cursor: 'pointer', color: 'var(--text-sec)' }}>{IC.close}</div></div>{children}</div></div> }
+
+function Confetti({ active }) {
+  if (!active) return null
+  const colors = ['#6366F1','#22C55E','#F59E0B','#EF4444','#8B5CF6','#F97316','#EC4899']
+  return <div className="confetti-container">{Array.from({length:50}).map((_,i) => <div key={i} className="confetti-piece" style={{ left: Math.random()*100+'%', background: colors[i%colors.length], animationDelay: Math.random()*2+'s', animationDuration: (2+Math.random()*2)+'s', width: 6+Math.random()*8, height: 6+Math.random()*8, borderRadius: Math.random()>0.5 ? '50%' : '2px' }} />)}</div>
+}
 function Toast({ message }) { return <div className="toast">{IC.check} {message}</div> }
 function getVideoEmbed(url) {
   if (!url) return null
@@ -81,7 +87,7 @@ function LoginPage({ onLogin }) {
 }
 
 // ═══ SIDEBAR WITH TREE ═══
-function CourseSidebar({ sections, completedVideos, completedChapters, currentPage, setPage, selectedVideo, onSelectVideo, onLogout, mobileOpen, setMobileOpen, myProf }) {
+function CourseSidebar({ sections, completedVideos, completedChapters, currentPage, setPage, selectedVideo, onSelectVideo, onLogout, mobileOpen, setMobileOpen, myProf, darkMode, setDarkMode }) {
   const [openSections, setOpenSections] = useState(new Set())
   const [openChapters, setOpenChapters] = useState(new Set())
   const toggleSec = id => setOpenSections(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -167,6 +173,13 @@ function CourseSidebar({ sections, completedVideos, completedChapters, currentPa
           <div style={navStyle(currentPage === 'games')} onClick={() => { setPage('games'); setMobileOpen(false) }}>{IC.game} <span>Entraînement</span></div>
         </div>
 
+        {/* Dark mode toggle */}
+        <div style={{ padding: '4px 0' }}>
+          <div onClick={() => setDarkMode(!darkMode)} style={navStyle(false)}>
+            <span style={{ fontSize: 16 }}>{darkMode ? '\u2600\uFE0F' : '\uD83C\uDF19'}</span>
+            <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
+          </div>
+        </div>
         {/* Contact prof */}
         {myProf && <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Ton professeur</div>
@@ -463,6 +476,9 @@ function FlashcardsPage({ userId }) {
     const mm = {}; (m || []).forEach(r => mm[r.flashcard_id] = r); setMasteryMap(mm)
   }, [userId])
 
+  // Dark mode
+  useEffect(() => { const saved = typeof window !== 'undefined' && localStorage.getItem('bb-dark'); if (saved === 'true') setDarkMode(true) }, [])
+  useEffect(() => { if (typeof document !== 'undefined') { document.documentElement.classList.toggle('dark', darkMode); localStorage.setItem('bb-dark', darkMode) } }, [darkMode])
   useEffect(() => { loadData() }, [loadData])
 
   const today = new Date().toISOString().split('T')[0]
@@ -624,7 +640,7 @@ function FlashcardsPage({ userId }) {
 }
 
 // ═══ EXAMEN BLANC (Roadmap gamifiee + lockout) ═══
-function ExamPage({ userId, earnXP }) {
+function ExamPage({ userId, earnXP, onCelebrate }) {
   const [exams, setExams] = useState([]); const [results, setResults] = useState([]); const [activeExam, setActiveExam] = useState(null); const [questions, setQuestions] = useState([]); const [qIdx, setQIdx] = useState(0); const [answers, setAnswers] = useState({}); const [submitted, setSubmitted] = useState(false); const [timer, setTimer] = useState(0)
 
   useEffect(() => { (async () => {
@@ -650,7 +666,7 @@ function ExamPage({ userId, earnXP }) {
 
   const startExam = async name => { const { data } = await supabase.from('quiz_questions').select('*').eq('exam_name', name).order('sort_order'); setQuestions(data || []); setActiveExam(name); setQIdx(0); setAnswers({}); setSubmitted(false); setTimer(0) }
   useEffect(() => { if (!activeExam || submitted) return; const t = setInterval(() => setTimer(s => s + 1), 1000); return () => clearInterval(t) }, [activeExam, submitted])
-  const submit = async () => { setSubmitted(true); let sc = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) sc++ }); try { await supabase.from('quiz_results').insert({ user_id: userId, exam_name: activeExam, score: sc, total: questions.length }); await earnXP(userId, 'game_played'); const { data: r } = await supabase.from('quiz_results').select('*').eq('user_id', userId).order('completed_at', { ascending: false }); setResults(r || []) } catch {} }
+  const submit = async () => { setSubmitted(true); let sc = 0; questions.forEach(q => { if (answers[q.id] === q.correct_answer) sc++ }); try { await supabase.from('quiz_results').insert({ user_id: userId, exam_name: activeExam, score: sc, total: questions.length }); await earnXP(userId, 'game_played'); if (sc >= 8 && onCelebrate) onCelebrate(); const { data: r } = await supabase.from('quiz_results').select('*').eq('user_id', userId).order('completed_at', { ascending: false }); setResults(r || []) } catch {} }
   const fmtT = s => Math.floor(s/60) + ':' + String(s%60).padStart(2,'0')
 
   // ROADMAP
@@ -1008,11 +1024,12 @@ function AdminProgress({ students, sections }) {
 
 // ═══ MAIN APP ═══
 export default function Home() {
-  const [user, setUser] = useState(null); const [page, setPage] = useState('welcome'); const [toast, setToast] = useState(null); const [loading, setLoading] = useState(true); const [mobileOpen, setMobileOpen] = useState(false)
+  const [user, setUser] = useState(null); const [page, setPage] = useState('welcome'); const [toast, setToast] = useState(null); const [darkMode, setDarkMode] = useState(false); const [confetti, setConfetti] = useState(false); const [loading, setLoading] = useState(true); const [mobileOpen, setMobileOpen] = useState(false)
   const [students, setStudents] = useState([]); const [profs, setProfs] = useState([]); const [allSections, setAllSections] = useState([]); const [videos, setVideos] = useState([]); const [settings, setSettings] = useState({})
   const [completedVideos, setCompletedVideos] = useState([]); const [completedChapters, setCompletedChapters] = useState([]); const [streak, setStreak] = useState({}); const [xp, setXp] = useState(0); const [xpPopup, setXpPopup] = useState(null)
   const [selectedVideo, setSelectedVideo] = useState(null); const [selectedChapter, setSelectedChapter] = useState(null); const [viewingPdf, setViewingPdf] = useState(null)
   const [totalTime, setTotalTime] = useState(0)
+  const triggerConfetti = useCallback(() => { setConfetti(true); setTimeout(() => setConfetti(false), 3500) }, [])
   const showToast = useCallback(m => { setToast(m); setTimeout(() => setToast(null), 2500) }, [])
   const formSections = useMemo(() => allSections.filter(s => s.type === 'formation'), [allSections])
   const totalChapters = useMemo(() => formSections.reduce((a, s) => a + (s.chapters?.length || 0), 0), [formSections])
@@ -1047,6 +1064,9 @@ export default function Home() {
   }, [earnXP])
 
   useEffect(() => { if (!user || user.role === 'admin') return; const ping = async () => { const today = new Date().toISOString().split('T')[0]; try { const { data } = await supabase.from('time_tracking').select('*').eq('user_id', user.id).eq('session_date', today).single(); if (data) await supabase.from('time_tracking').update({ total_seconds: data.total_seconds + 30, last_ping: new Date().toISOString() }).eq('id', data.id); else await supabase.from('time_tracking').insert({ user_id: user.id, session_date: today, total_seconds: 30 }) } catch {} }; const i = setInterval(ping, 30000); ping(); return () => clearInterval(i) }, [user])
+  // Dark mode
+  useEffect(() => { const saved = typeof window !== 'undefined' && localStorage.getItem('bb-dark'); if (saved === 'true') setDarkMode(true) }, [])
+  useEffect(() => { if (typeof document !== 'undefined') { document.documentElement.classList.toggle('dark', darkMode); localStorage.setItem('bb-dark', darkMode) } }, [darkMode])
   useEffect(() => { loadData() }, [loadData])
 
   const login = async (username, password, setErr) => { const { data, error } = await supabase.from('users').select('*').eq('username', username).eq('password', password).single(); if (error || !data) { setErr('Identifiant ou mot de passe incorrect'); return }; if (!data.active && data.role !== 'admin') { setErr('Compte désactivé'); return }; setUser(data); if (data.role === 'admin') setPage('admin-dash'); else { setPage('welcome'); await loadStudentData(data.id); await updateStreak(data.id) } }
@@ -1086,6 +1106,7 @@ export default function Home() {
   const goPrev = () => { if (vidIdx > 0) { const pv = allVidsFlat[vidIdx - 1]; const pc = formSections.flatMap(s => s.chapters||[]).find(c => (c.videos||[]).some(v => v.id === pv.id)); onSelectVideo(pv, pc) } }
   const handleContinue = () => { setPage('welcome'); if (allVidsFlat.length > 0) { const firstUnwatched = allVidsFlat.find(v => !completedVideos.includes(v.id)); if (firstUnwatched) { const ch = formSections.flatMap(s => s.chapters||[]).find(c => (c.videos||[]).some(v => v.id === firstUnwatched.id)); onSelectVideo(firstUnwatched, ch) } else { setPage('welcome') } } }
 
+  const isDemo = user?.username === 'demo'
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-sec)' }}>Chargement...</div>
   if (!user) return <LoginPage onLogin={login} />
   const isAdmin = user.role === 'admin'
@@ -1120,7 +1141,7 @@ export default function Home() {
 
   return (
     <div className="app-layout">
-      <CourseSidebar sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} currentPage={page} setPage={p => { setPage(p); setSelectedVideo(null); setViewingPdf(null) }} selectedVideo={selectedVideo} onSelectVideo={onSelectVideo} onLogout={logout} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} myProf={myProf} />
+      <CourseSidebar sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} currentPage={page} setPage={p => { setPage(p); setSelectedVideo(null); setViewingPdf(null) }} selectedVideo={selectedVideo} onSelectVideo={onSelectVideo} onLogout={logout} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} myProf={myProf} darkMode={darkMode} setDarkMode={setDarkMode} />
       <div className="main-content">
         {page === 'welcome' && <WelcomePage completedChapters={completedChapters} totalChapters={totalChapters} completedVideos={completedVideos.length} totalVideos={totalVideos} streak={streak} xp={xp} sections={formSections} onContinue={handleContinue} userName={user.first_name} totalTime={totalTime} />}
         {page === 'video' && selectedVideo && <VideoPlayer video={selectedVideo} chapter={selectedChapter} isDone={completedVideos.includes(selectedVideo.id)} onToggle={() => toggleVideoComplete(selectedVideo.id)} onNext={goNext} onPrev={goPrev} hasNext={vidIdx < allVidsFlat.length - 1} hasPrev={vidIdx > 0} allVids={selectedChapter?.videos || []} completedVideos={completedVideos} onSelectVideo={onSelectVideo} onOpenPdf={onOpenPdf} />}
@@ -1128,10 +1149,12 @@ export default function Home() {
         {page === 'chapters' && <ChaptersPage sections={formSections} completedVideos={completedVideos} completedChapters={completedChapters} toggleChapterComplete={toggleChapterComplete} onSelectVideo={onSelectVideo} trackPdf={trackPdf} earnXP={earnXP} userId={user.id} />}
         {page === 'progress' && <ProgressPage sections={formSections} completedChapters={completedChapters} completedVideos={completedVideos} xp={xp} streak={streak} totalTime={totalTime} />}
         {page === 'flashcards' && <FlashcardsPage userId={user.id} />}
-        {page === 'exam' && <ExamPage userId={user.id} earnXP={earnXP} />}
+        {page === 'exam' && <ExamPage userId={user.id} earnXP={earnXP} onCelebrate={triggerConfetti} />}
         {page === 'games' && <GamesPage userId={user.id} earnXP={earnXP} />}
       </div>
       {toast && <Toast message={toast} />}
+      <Confetti active={confetti} />
+      {isDemo && <div className="demo-banner">Mode demo — tu vois un apercu de la plateforme<a href="https://wa.me/33XXXXXXXXX" target="_blank" rel="noreferrer">Rejoindre la formation</a></div>}
       {xpPopup && <div style={{ position: 'fixed', top: 80, right: 24, background: 'linear-gradient(135deg, #312E81, #1E1B4B)', color: '#A5B4FC', padding: '12px 20px', borderRadius: 14, fontSize: 14, fontWeight: 700, zIndex: 300, display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.3)', animation: 'toastIn 0.3s ease' }}>⚡ +{xpPopup.xp} XP — {xpPopup.label}</div>}
     </div>
   )
